@@ -5,9 +5,11 @@
         <group>
             <file>file:/home/cody/NetBeansProjects/3420/src/DBConnection.java</file>
             <file>file:/home/cody/NetBeansProjects/3420/src/Reports.java</file>
-            <file>file:/home/cody/NetBeansProjects/3420/src/Invoices.java</file>
+            <file>file:/home/cody/NetBeansProjects/3420/src/AddInvoice.java</file>
             <file>file:/home/cody/NetBeansProjects/3420/src/MainWindow.java</file>
+            <file>file:/home/cody/NetBeansProjects/3420/src/Invoices.java</file>
             <file>file:/home/cody/NetBeansProjects/3420/src/Tickets.java</file>
+            <file>file:/home/cody/NetBeansProjects/3420/src/AddTicket.java</file>
         </group>
     </open-files>
 </project-private>
