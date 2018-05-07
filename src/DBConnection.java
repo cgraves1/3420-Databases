@@ -16,6 +16,7 @@ import java.io.*;
 import java.util.*;
 
 public class DBConnection {
+    static boolean connected = false;
     public static Connection conn = null;
     public static Statement statement = null;
     public static CallableStatement cStatement;
@@ -25,13 +26,14 @@ public class DBConnection {
             url = "jdbc:postgresql://localhost:5432/plumbingdb";
     
     public static Connection connect() {
-        //Connection conn = null;
         try {
             conn = DriverManager.getConnection(url, dbUser, password);
             System.out.println("Connected to PostgreSQL server successfully.");
+            connected = true;
         }
         catch (SQLException e) {
             System.out.println(e.getMessage());
+            connected = false;
         }
         return conn;
     }
