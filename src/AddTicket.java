@@ -1,6 +1,7 @@
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Statement;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
 
@@ -21,31 +22,81 @@ public class AddTicket extends javax.swing.JFrame {
         dbc = new DBConnection();
         dbc.connect();
         initComponents();
+        hideIds();
         updateCustomers();
     }
     
+    public void hideIds(){
+        TableColumnModel tcm = jTable1.getColumnModel();
+        tcm.removeColumn(tcm.getColumn(0));
+        tcm = jTable2.getColumnModel();
+        tcm.removeColumn(tcm.getColumn(0));
+    }
+    
     public void updateCustomers(){
+        
+        DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
         String sql = "Select * FROM customerview";
         try (
             PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
             ResultSet rs = stmt.executeQuery();
             
             String rowData[] = new String[2];
-            DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
+            
             model.setRowCount(0);
             while (rs.next()) {
-                rowData[1] = rs.getString(1) + " " + rs.getString(2);
+                rowData[0] = rs.getString(1);
+                rowData[1] = rs.getString(3).substring(0,1).toUpperCase() + 
+                        rs.getString(3).substring(1) + ", " + 
+                        rs.getString(2).substring(0,1).toUpperCase() +
+                        rs.getString(2).substring(1);
                 System.out.println(rowData[0]);
-                model.addRow(rowData);
+                
+                if (!jTextField4.getText().isEmpty())
+                {
+                    if (rowData[1].toLowerCase().contains(jTextField4.getText().toLowerCase()))
+                        model.addRow(rowData);
+                }
+                else
+                    model.addRow(rowData);
             }
-            //hide customer_id
-            TableColumnModel tcm = jTable1.getColumnModel();
-            tcm.removeColumn(tcm.getColumn(0));
-            
             jTable1.setModel(model);
             jTable1.setRowHeight(30);
             model.fireTableDataChanged();
             
+        }
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+    
+    
+    public void updateLocations(int id){
+        DefaultTableModel model = (DefaultTableModel) jTable2.getModel();
+        String sql = "Select * FROM get_locations(?)";
+        try (
+            PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+            stmt.setInt(1,id);
+            ResultSet rs = stmt.executeQuery();
+            String rowData[] = new String[2];
+            model.setRowCount(0);
+            while (rs.next()) {
+                rowData[0] = rs.getString(1);
+                rowData[1] = rs.getString(2);
+                rs.getString(3);
+                rs.getString(4);
+                rs.getString(5);
+                if (!jTextField5.getText().isEmpty())
+                {
+                    if (rowData[1].toLowerCase().contains(jTextField5.getText().toLowerCase()))
+                        model.addRow(rowData);
+                }
+                else
+                    model.addRow(rowData);
+            }
+            jTable2.setModel(model);
+            jTable2.setRowHeight(30);
+            model.fireTableDataChanged();
         }
         catch(Exception e) {
             System.out.println(e.getMessage());
@@ -102,6 +153,22 @@ public class AddTicket extends javax.swing.JFrame {
         jLabel2.setForeground(new java.awt.Color(51, 51, 51));
         jLabel2.setText("Customer Name: ");
 
+        jTextField4.addInputMethodListener(new java.awt.event.InputMethodListener() {
+            public void inputMethodTextChanged(java.awt.event.InputMethodEvent evt) {
+                jTextField4InputMethodTextChanged(evt);
+            }
+            public void caretPositionChanged(java.awt.event.InputMethodEvent evt) {
+            }
+        });
+        jTextField4.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                jTextField4KeyTyped(evt);
+            }
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                jTextField4KeyReleased(evt);
+            }
+        });
+
         jLabel10.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Search.png"))); // NOI18N
 
         jLabel4.setForeground(new java.awt.Color(51, 51, 51));
@@ -109,6 +176,12 @@ public class AddTicket extends javax.swing.JFrame {
 
         jLabel3.setForeground(new java.awt.Color(51, 51, 51));
         jLabel3.setText("Location:");
+
+        jTextField5.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                jTextField5KeyReleased(evt);
+            }
+        });
 
         jLabel11.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Search.png"))); // NOI18N
 
@@ -158,6 +231,11 @@ public class AddTicket extends javax.swing.JFrame {
                 return canEdit [columnIndex];
             }
         });
+        jTable1.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                jTable1MousePressed(evt);
+            }
+        });
         jScrollPane3.setViewportView(jTable1);
 
         jTable2.setModel(new javax.swing.table.DefaultTableModel(
@@ -177,6 +255,11 @@ public class AddTicket extends javax.swing.JFrame {
 
             public boolean isCellEditable(int rowIndex, int columnIndex) {
                 return canEdit [columnIndex];
+            }
+        });
+        jTable2.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                jTable2KeyReleased(evt);
             }
         });
         jScrollPane4.setViewportView(jTable2);
@@ -319,8 +402,39 @@ public class AddTicket extends javax.swing.JFrame {
     }//GEN-LAST:event_jButton10ActionPerformed
 
     private void jButton11ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton11ActionPerformed
-        // TODO add your handling code here:
+
+        
     }//GEN-LAST:event_jButton11ActionPerformed
+
+    private void jTextField4KeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTextField4KeyTyped
+        
+    }//GEN-LAST:event_jTextField4KeyTyped
+
+    private void jTextField4InputMethodTextChanged(java.awt.event.InputMethodEvent evt) {//GEN-FIRST:event_jTextField4InputMethodTextChanged
+
+    }//GEN-LAST:event_jTextField4InputMethodTextChanged
+
+    private void jTextField4KeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTextField4KeyReleased
+        updateCustomers();
+        updateLocations(-1);
+    }//GEN-LAST:event_jTextField4KeyReleased
+
+    private void jTable1MousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTable1MousePressed
+        int row = jTable1.getSelectedRow();
+        if (row > -1)
+            updateLocations(Integer.parseInt(jTable1.getModel().getValueAt(row,0).toString()));
+                    //System.out.println(jTable1.getModel().getValueAt(row,0));
+    }//GEN-LAST:event_jTable1MousePressed
+
+    private void jTable2KeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTable2KeyReleased
+        
+    }//GEN-LAST:event_jTable2KeyReleased
+
+    private void jTextField5KeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTextField5KeyReleased
+        int row = jTable1.getSelectedRow();
+        if (row > -1)
+            updateLocations(Integer.parseInt(jTable1.getModel().getValueAt(row,0).toString()));
+    }//GEN-LAST:event_jTextField5KeyReleased
 
     /**
      * @param args the command line arguments
