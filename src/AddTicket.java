@@ -1,7 +1,13 @@
 
+import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.sql.Types;
+import java.util.HashMap;
+import java.util.Vector;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.JComboBox;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
 
@@ -15,15 +21,75 @@ import javax.swing.table.TableColumnModel;
  *
  * @author cody
  */
+
 public class AddTicket extends javax.swing.JFrame {
     DBConnection dbc = null;
+    private MainWindow parentObject = null;
     public AddTicket() {
-        
         dbc = new DBConnection();
         dbc.connect();
         initComponents();
         hideIds();
         updateCustomers();
+        updateFields();
+    }
+    
+    public void setParentObject(MainWindow obj)
+    {
+        parentObject = obj;
+    }
+
+    
+    public void updateFields()
+    {
+        //update technicians
+        //JComboBox jComboBox4 = new JComboBox();
+        //jComboBox4.addItem(new Item(-1,""));
+        //jComboBox4 = new JComboBox();
+        HashMap<String, Integer> map = new HashMap<String, Integer>();
+        //jComboBox4.addItem(new Item("-1",""));
+        DefaultComboBoxModel model = (DefaultComboBoxModel) jComboBox4.getModel();
+        String sql = "Select * from technicianview";
+        Item item;
+        try (
+            PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()){
+                int id = rs.getInt(1);
+                String name = rs.getString(2) + " " + rs.getString(3);
+                item = new Item(id,name);
+                //Object[] rowData = new Object[] {id, name};
+                //jComboBox4.addItem(new Item(id,name));
+                jComboBox4.addItem(name);
+                System.out.println("ADDED: " + id + " " + name);
+                System.out.println(jComboBox4.getItemCount());
+                //jComboBox4.setRenderer(new CustomListCellRenderer());
+                
+            }
+        }
+        catch(Exception e)
+        {
+            System.out.println(e);
+        }
+        //update problems
+        model = (DefaultComboBoxModel) jComboBox3.getModel();
+        sql = "Select * from problemview";
+        try (
+            PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()){
+                int id = rs.getInt(1);
+                String name = rs.getString(2);
+                Object[] rowData = new Object[] {id, name};
+                jComboBox3.addItem(name);
+            }
+        }
+        catch(Exception e)
+        {
+            System.out.println(e);
+        }
+
+        
     }
     
     public void hideIds(){
@@ -50,7 +116,7 @@ public class AddTicket extends javax.swing.JFrame {
                         rs.getString(3).substring(1) + ", " + 
                         rs.getString(2).substring(0,1).toUpperCase() +
                         rs.getString(2).substring(1);
-                System.out.println(rowData[0]);
+                //System.out.println(rowData[0]);
                 
                 if (!jTextField4.getText().isEmpty())
                 {
@@ -188,6 +254,8 @@ public class AddTicket extends javax.swing.JFrame {
         jLabel5.setForeground(new java.awt.Color(51, 51, 51));
         jLabel5.setText("ETA:");
 
+        jTextField1.setText("2018-12-31 06:30:30");
+
         jButton10.setText("Cancel");
         jButton10.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -234,6 +302,14 @@ public class AddTicket extends javax.swing.JFrame {
         jTable1.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(java.awt.event.MouseEvent evt) {
                 jTable1MousePressed(evt);
+            }
+        });
+        jTable1.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                jTable1KeyPressed(evt);
+            }
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                jTable1KeyReleased(evt);
             }
         });
         jScrollPane3.setViewportView(jTable1);
@@ -403,7 +479,50 @@ public class AddTicket extends javax.swing.JFrame {
 
     private void jButton11ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton11ActionPerformed
 
+        int ticket_id = -1;
+        if (jTable1.getSelectedRow() < 0 || jTable2.getSelectedRow() < 0)
+        {
+            System.out.println("Select customer and address");
+            return;
+        }
+        String sql;
+        if (jTextField1.getText().isEmpty())
+            sql = "{? = call addticket(?,?)}";//sql = "select ? = addticket(?,?)"; //location, problem
+        else
+            sql = "{? = addticket(?,?,?)}"; //location, problem, eta
+        try (
+            CallableStatement stmt = dbc.conn.prepareCall(sql)){
+            int row = jTable2.getSelectedRow();
+            stmt.registerOutParameter(1, Types.INTEGER);
+            stmt.setInt(2,Integer.parseInt(jTable2.getModel().getValueAt(row,0).toString()));
+            stmt.setInt(3,(jComboBox3.getSelectedIndex() + 1));
+            if (!jTextField1.getText().equals(""))
+                stmt.setString(4,jTextField1.getText());
+            stmt.execute();
+            ticket_id = stmt.getInt(1);
+            System.out.println(ticket_id);
+        }
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }
         
+        //if technician is selected, assign did_work as well
+        if (jComboBox4.getSelectedIndex() > 0 && ticket_id > 0)
+        {
+            sql = "select addassign(?,?)";
+            try (
+                PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+                stmt.setInt(1, ticket_id);
+                stmt.setInt(2, jComboBox4.getSelectedIndex() + 1);
+                stmt.executeQuery();
+            }
+            catch(Exception e) {
+            System.out.println(e.getMessage());
+            }
+
+        }
+        parentObject.updateTickets();
+        this.setVisible(false);
     }//GEN-LAST:event_jButton11ActionPerformed
 
     private void jTextField4KeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTextField4KeyTyped
@@ -435,6 +554,16 @@ public class AddTicket extends javax.swing.JFrame {
         if (row > -1)
             updateLocations(Integer.parseInt(jTable1.getModel().getValueAt(row,0).toString()));
     }//GEN-LAST:event_jTextField5KeyReleased
+
+    private void jTable1KeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTable1KeyPressed
+
+    }//GEN-LAST:event_jTable1KeyPressed
+
+    private void jTable1KeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTable1KeyReleased
+        int row = jTable1.getSelectedRow();
+        if (row > -1)
+            updateLocations(Integer.parseInt(jTable1.getModel().getValueAt(row,0).toString()));
+    }//GEN-LAST:event_jTable1KeyReleased
 
     /**
      * @param args the command line arguments
