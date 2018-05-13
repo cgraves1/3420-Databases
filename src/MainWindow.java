@@ -4,6 +4,9 @@ import java.sql.ResultSet;
 import javax.sql.*;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import javax.swing.JPanel;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
@@ -961,6 +964,8 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_jMenuItem1ActionPerformed
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
+        Globals.ticketid = -1;
+        Globals.ticketreceived = "";
         AddTicket a = new AddTicket();
         a.setParentObject(this);
         a.setVisible(true);
@@ -1103,7 +1108,34 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_jButton14ActionPerformed
 
     private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
-        // TODO add your handling code here:
+        int row = -1;
+        row = jTable1.getSelectedRow();
+        if (row < 0)
+        {
+            System.out.println("No ticket selected");
+            return;
+        }
+        Globals.ticketid = Integer.parseInt(jTable1.getModel().getValueAt(row,0).toString()); 
+        /////////
+       
+        String sql = "select * from getreceived(?)";
+
+        try (
+            PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+            stmt.setInt(1,Globals.ticketid);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next())
+                Globals.ticketreceived = rs.getTimestamp(1).toString();
+            
+            }
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }
+        /////////
+        AddTicket a = new AddTicket();
+        String[] tmp = jTable1.getModel().getValueAt(row,0).toString().split("");
+        a.setParentObject(this);
+        a.setVisible(true);
     }//GEN-LAST:event_jButton5ActionPerformed
 
     private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton6ActionPerformed

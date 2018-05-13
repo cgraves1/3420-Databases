@@ -1,13 +1,17 @@
 
 import java.sql.CallableStatement;
+import java.util.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.sql.Types;
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Vector;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
+import javax.swing.JLabel;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
 
@@ -25,6 +29,8 @@ import javax.swing.table.TableColumnModel;
 public class AddTicket extends javax.swing.JFrame {
     DBConnection dbc = null;
     private MainWindow parentObject = null;
+    HashMap<String, Integer> techMap = new HashMap<String, Integer>();
+    HashMap<String, Integer> probMap = new HashMap<String, Integer>();
     public AddTicket() {
         dbc = new DBConnection();
         dbc.connect();
@@ -39,15 +45,11 @@ public class AddTicket extends javax.swing.JFrame {
         parentObject = obj;
     }
 
-    
+ 
     public void updateFields()
     {
         //update technicians
-        //JComboBox jComboBox4 = new JComboBox();
-        //jComboBox4.addItem(new Item(-1,""));
-        //jComboBox4 = new JComboBox();
-        HashMap<String, Integer> map = new HashMap<String, Integer>();
-        //jComboBox4.addItem(new Item("-1",""));
+        jComboBox4.addItem("");
         DefaultComboBoxModel model = (DefaultComboBoxModel) jComboBox4.getModel();
         String sql = "Select * from technicianview";
         Item item;
@@ -58,14 +60,10 @@ public class AddTicket extends javax.swing.JFrame {
                 int id = rs.getInt(1);
                 String name = rs.getString(2) + " " + rs.getString(3);
                 item = new Item(id,name);
-                //Object[] rowData = new Object[] {id, name};
-                //jComboBox4.addItem(new Item(id,name));
-                jComboBox4.addItem(name);
-                System.out.println("ADDED: " + id + " " + name);
-                System.out.println(jComboBox4.getItemCount());
-                //jComboBox4.setRenderer(new CustomListCellRenderer());
-                
+                techMap.put(item.getDescription(), item.getId());
             }
+            for (String s : techMap.keySet())
+                    jComboBox4.addItem(s);
         }
         catch(Exception e)
         {
@@ -80,9 +78,14 @@ public class AddTicket extends javax.swing.JFrame {
             while (rs.next()){
                 int id = rs.getInt(1);
                 String name = rs.getString(2);
-                Object[] rowData = new Object[] {id, name};
-                jComboBox3.addItem(name);
+                item = new Item(id,name);
+                probMap.put(item.getDescription(),item.getId());
+                //Object[] rowData = new Object[] {id, name};
+                //jComboBox3.addItem(name);
             }
+            for (String s : probMap.keySet())
+                jComboBox3.addItem(s);
+            
         }
         catch(Exception e)
         {
@@ -202,6 +205,8 @@ public class AddTicket extends javax.swing.JFrame {
         jTable1 = new javax.swing.JTable();
         jScrollPane4 = new javax.swing.JScrollPane();
         jTable2 = new javax.swing.JTable();
+        jLabel12 = new javax.swing.JLabel();
+        jLabel13 = new javax.swing.JLabel();
         jMenuBar1 = new javax.swing.JMenuBar();
         jMenu1 = new javax.swing.JMenu();
         jMenuItem1 = new javax.swing.JMenuItem();
@@ -254,8 +259,6 @@ public class AddTicket extends javax.swing.JFrame {
         jLabel5.setForeground(new java.awt.Color(51, 51, 51));
         jLabel5.setText("ETA:");
 
-        jTextField1.setText("2018-12-31 06:30:30");
-
         jButton10.setText("Cancel");
         jButton10.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -276,7 +279,9 @@ public class AddTicket extends javax.swing.JFrame {
         jLabel7.setForeground(new java.awt.Color(51, 51, 51));
         jLabel7.setText("Status: ");
 
-        jLabel1.setText("id#");
+        jLabel1.setText("");
+        if(Globals.ticketid >= 0)
+        jLabel1.setText(""+Globals.ticketid);
 
         jLabel8.setText("Received: ");
 
@@ -340,6 +345,10 @@ public class AddTicket extends javax.swing.JFrame {
         });
         jScrollPane4.setViewportView(jTable2);
 
+        jLabel12.setText("ID#");
+
+        jLabel13.setText(""+Globals.ticketreceived);
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -355,9 +364,13 @@ public class AddTicket extends javax.swing.JFrame {
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addComponent(jLabel9, javax.swing.GroupLayout.PREFERRED_SIZE, 146, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 211, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLabel8)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 132, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, 211, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(jLabel12)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                             .addComponent(jLabel6)
@@ -404,7 +417,9 @@ public class AddTicket extends javax.swing.JFrame {
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel9, javax.swing.GroupLayout.PREFERRED_SIZE, 34, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel1)
-                    .addComponent(jLabel8))
+                    .addComponent(jLabel8)
+                    .addComponent(jLabel12)
+                    .addComponent(jLabel13))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(jLabel3)
@@ -487,20 +502,39 @@ public class AddTicket extends javax.swing.JFrame {
         }
         String sql;
         if (jTextField1.getText().isEmpty())
-            sql = "{? = call addticket(?,?)}";//sql = "select ? = addticket(?,?)"; //location, problem
+            sql = "select * from addticket(?,?)";
+//sql = "{? = call addticket(?,?)}";//sql = "select ? = addticket(?,?)"; //location, problem
         else
-            sql = "{? = addticket(?,?,?)}"; //location, problem, eta
+            sql = "select * from addticket(?,?,?)";
+//sql = "{? = addticket(?,?,?)}"; //location, problem, eta
         try (
-            CallableStatement stmt = dbc.conn.prepareCall(sql)){
+            PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+            //CallableStatement stmt = dbc.conn.prepareCall(sql)){
             int row = jTable2.getSelectedRow();
-            stmt.registerOutParameter(1, Types.INTEGER);
-            stmt.setInt(2,Integer.parseInt(jTable2.getModel().getValueAt(row,0).toString()));
-            stmt.setInt(3,(jComboBox3.getSelectedIndex() + 1));
+            //stmt.registerOutParameter(1, Types.INTEGER);
+            stmt.setInt(1,Integer.parseInt(jTable2.getModel().getValueAt(row,0).toString()));
+            stmt.setInt(2,probMap.get(jComboBox3.getSelectedItem().toString()));
             if (!jTextField1.getText().equals(""))
-                stmt.setString(4,jTextField1.getText());
-            stmt.execute();
-            ticket_id = stmt.getInt(1);
-            System.out.println(ticket_id);
+            {
+                try{
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+                Date parsedDate =  dateFormat.parse(jTextField1.getText());
+                Timestamp ts = new Timestamp(parsedDate.getTime());
+                stmt.setTimestamp(3,ts);
+                }
+                catch(Exception e)
+                {
+                    System.out.println("Time format is invalid - yyyy-MM-dd hh:mm:ss");
+                    return;
+                }
+
+            }
+            //stmt.execute();
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next())
+                ticket_id = rs.getInt(1);
+            //ticket_id = stmt.getInt(1);
+            //System.out.println(ticket_id);
         }
         catch(Exception e) {
             System.out.println(e.getMessage());
@@ -513,7 +547,7 @@ public class AddTicket extends javax.swing.JFrame {
             try (
                 PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
                 stmt.setInt(1, ticket_id);
-                stmt.setInt(2, jComboBox4.getSelectedIndex() + 1);
+                stmt.setInt(2, techMap.get(jComboBox4.getSelectedItem().toString()));
                 stmt.executeQuery();
             }
             catch(Exception e) {
@@ -596,8 +630,10 @@ public class AddTicket extends javax.swing.JFrame {
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
                 new AddTicket().setVisible(true);
+                System.out.println(Globals.ticketid);
             }
         });
+        
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -609,6 +645,8 @@ public class AddTicket extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
+    private javax.swing.JLabel jLabel12;
+    private javax.swing.JLabel jLabel13;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
