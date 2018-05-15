@@ -14,6 +14,7 @@ import javax.swing.table.TableColumnModel;
 public class MainWindow extends javax.swing.JFrame {
     DBConnection dbc = null;
     int buttonPressed = 1;
+
     public MainWindow() {
         initComponents();
         dbc = new DBConnection();
@@ -28,6 +29,73 @@ public class MainWindow extends javax.swing.JFrame {
         reportPanel.setVisible(false);
     }
     
+    public int getTicketFromInvoice(String invNum)
+    {
+        String sql = "select get_ticket_from_invoice(?)";
+        int ticketid = -1;
+        try (
+        PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+        stmt.setString(1, invNum);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next())
+            ticketid = rs.getInt(1);
+        }
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }
+        return ticketid;
+    }
+    
+    public String getStatus(int id)
+    {
+        String sql = "select get_status(?)";
+        String status = "";
+        try (
+        PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+        stmt.setInt(1, id);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next())
+            status = rs.getString(1);
+        }
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }
+        return status;
+    }
+    
+    public int checkDateQuery(String id, String begin, String end)
+    {
+        String sql = "select invoice_in_date(?,?,?)";
+        int status = 0;
+        try (
+        PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+        stmt.setString(1, id);
+        stmt.setString(2, begin);
+        stmt.setString(3,begin);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next())
+            status = rs.getInt(1);
+        }
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }
+        return status; 
+    }
+    
+    public void changeStatus(int id, String newStatus)
+    {
+        String sql = "select set_status(?,?)";
+        try (
+        PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+        stmt.setInt(1, id);
+        stmt.setString(2, newStatus);
+        stmt.executeQuery();
+        }
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+    
     public void hideIds(){
         //hide ticket_id
         TableColumnModel tcm = jTable1.getColumnModel();
@@ -40,6 +108,8 @@ public class MainWindow extends javax.swing.JFrame {
         else
             connLabel.setText("Connected");
     }
+    
+    
     
     public void updateTickets(){
         String sql = "Select * FROM openticketview order by status asc, ticket_id asc";
@@ -84,6 +154,22 @@ public class MainWindow extends javax.swing.JFrame {
         }
     }
     
+    public String getTech(String invNum)
+    {
+        String sql = "select get_tech(?)";
+        String name = "";
+        try (
+        PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+        stmt.setString(1, invNum);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next())
+            name = rs.getString(1);
+        }
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }
+        return name;
+    }
     public void updateInvoices(){
         String sql = "Select * FROM invoiceview";
         try (
@@ -104,8 +190,38 @@ public class MainWindow extends javax.swing.JFrame {
                     if (rowData[i].equals("null") || rowData[i].equals("null null"))
                         rowData[i] = "";
                 }
-                
-                model.addRow(rowData);
+                /////////NEW
+                boolean withinDate = true;
+                if(!jTextField2.getText().isEmpty() && !jTextField8.getText().isEmpty())
+                {
+                    System.out.println("CHECKING DATES");
+                    withinDate = false;
+                    if (checkDateQuery(rowData[1], jTextField2.getText(), jTextField8.getText()) > 0)
+                        withinDate = true;
+                }
+                System.out.println(""+checkDateQuery(rowData[1], jTextField2.getText(), jTextField8.getText()));
+                if (!jTextField1.getText().isEmpty())
+                {
+                    if (jRadioButton1.isSelected()) //invoice number search
+                    {
+                        if (rowData[1].toLowerCase().contains(jTextField1.getText().toLowerCase()) && withinDate)
+                            model.addRow(rowData);
+                    }
+                    if (jRadioButton2.isSelected()) //customer search
+                    {
+                        if (rowData[0].toLowerCase().contains(jTextField1.getText().toLowerCase()) && withinDate)
+                            model.addRow(rowData);
+                    }
+                    if (jRadioButton3.isSelected()) //tech search
+                    {
+                        if (getTech(rowData[1]).toLowerCase().contains(jTextField1.getText().toLowerCase()) && withinDate)
+                            model.addRow(rowData);
+                    }
+                    
+                }
+                else
+                    model.addRow(rowData);  //////////END NEW              
+                //model.addRow(rowData);
             }
             jTable2.setModel(model);
             jTable2.setRowHeight(30);
@@ -116,6 +232,7 @@ public class MainWindow extends javax.swing.JFrame {
             System.out.println(e.getMessage());
         }
     }
+    
     
         public void updateRecentInvoices(){
         String sql = "Select * FROM recentinvoiceview";
@@ -219,6 +336,8 @@ public class MainWindow extends javax.swing.JFrame {
         jSeparator2 = new javax.swing.JSeparator();
         jLabel9 = new javax.swing.JLabel();
         jButton6 = new javax.swing.JButton();
+        jButton1 = new javax.swing.JButton();
+        jButton4 = new javax.swing.JButton();
         reportPanel = new javax.swing.JPanel();
         jPanel12 = new javax.swing.JPanel();
         jLabel8 = new javax.swing.JLabel();
@@ -536,6 +655,9 @@ public class MainWindow extends javax.swing.JFrame {
             jTable1.getColumnModel().getColumn(3).setPreferredWidth(40);
         }
 
+        jButton2.setBackground(new java.awt.Color(204, 0, 0));
+        jButton2.setFont(new java.awt.Font("Dialog", 1, 14)); // NOI18N
+        jButton2.setForeground(new java.awt.Color(255, 255, 255));
         jButton2.setText("Delete");
         jButton2.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -591,6 +713,20 @@ public class MainWindow extends javax.swing.JFrame {
             }
         });
 
+        jButton1.setText("Check In");
+        jButton1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton1ActionPerformed(evt);
+            }
+        });
+
+        jButton4.setText("Check Out");
+        jButton4.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton4ActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout ticketPanelLayout = new javax.swing.GroupLayout(ticketPanel);
         ticketPanel.setLayout(ticketPanelLayout);
         ticketPanelLayout.setHorizontalGroup(
@@ -605,11 +741,15 @@ public class MainWindow extends javax.swing.JFrame {
                         .addComponent(jSeparator2, javax.swing.GroupLayout.PREFERRED_SIZE, 3, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(ticketPanelLayout.createSequentialGroup()
                         .addComponent(jButton3, javax.swing.GroupLayout.PREFERRED_SIZE, 143, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(18, 18, 18)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jButton5, javax.swing.GroupLayout.PREFERRED_SIZE, 143, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(18, 18, 18)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 143, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jButton4, javax.swing.GroupLayout.PREFERRED_SIZE, 143, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(29, 29, 29)
                         .addComponent(jButton13, javax.swing.GroupLayout.PREFERRED_SIZE, 143, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(303, 303, 303)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 143, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(ticketPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -624,7 +764,7 @@ public class MainWindow extends javax.swing.JFrame {
             ticketPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(ticketPanelLayout.createSequentialGroup()
                 .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 11, Short.MAX_VALUE)
+                .addGap(11, 11, 11)
                 .addGroup(ticketPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(ticketPanelLayout.createSequentialGroup()
                         .addComponent(jLabel9, javax.swing.GroupLayout.DEFAULT_SIZE, 24, Short.MAX_VALUE)
@@ -632,13 +772,18 @@ public class MainWindow extends javax.swing.JFrame {
                         .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 570, Short.MAX_VALUE))
                     .addComponent(jScrollPane1)
                     .addComponent(jSeparator2))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGroup(ticketPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jButton3, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jButton13, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jButton5, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jButton6, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(ticketPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(ticketPanelLayout.createSequentialGroup()
+                        .addGroup(ticketPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jButton3, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jButton13, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jButton5, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jButton6, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addComponent(jButton1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jButton4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
 
@@ -727,16 +872,36 @@ public class MainWindow extends javax.swing.JFrame {
 
         invoiceButtonGroup.add(jRadioButton1);
         jRadioButton1.setText("Invoice #");
+        jRadioButton1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jRadioButton1ActionPerformed(evt);
+            }
+        });
 
         invoiceButtonGroup.add(jRadioButton2);
         jRadioButton2.setText("Customer");
+        jRadioButton2.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jRadioButton2ActionPerformed(evt);
+            }
+        });
 
         invoiceButtonGroup.add(jRadioButton3);
         jRadioButton3.setText("Technician");
+        jRadioButton3.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jRadioButton3ActionPerformed(evt);
+            }
+        });
 
         jTextField1.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jTextField1ActionPerformed(evt);
+            }
+        });
+        jTextField1.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                jTextField1KeyReleased(evt);
             }
         });
 
@@ -748,9 +913,17 @@ public class MainWindow extends javax.swing.JFrame {
         jLabel19.setForeground(new java.awt.Color(51, 51, 51));
         jLabel19.setText("To:");
 
-        jTextField2.setText("01/01/2017");
+        jTextField2.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                jTextField2KeyReleased(evt);
+            }
+        });
 
-        jTextField8.setText("12/31/2017");
+        jTextField8.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                jTextField8KeyReleased(evt);
+            }
+        });
 
         jTable2.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -965,10 +1138,14 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
         Globals.ticketid = -1;
+        Globals.employeeid = -1;
         Globals.ticketreceived = "";
+        //if (!Globals.ticketWindowOpen)
+        //{
         AddTicket a = new AddTicket();
         a.setParentObject(this);
         a.setVisible(true);
+        //}
     }//GEN-LAST:event_jButton3ActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
@@ -1089,12 +1266,72 @@ public class MainWindow extends javax.swing.JFrame {
         // TODO add your handling code here:
     }//GEN-LAST:event_jButton11ActionPerformed
 
+    //DELETE INVOICE
     private void jButton12ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton12ActionPerformed
-        // TODO add your handling code here:
+       int row = -1;
+        row = jTable2.getSelectedRow();
+        if (row < 0)
+        {
+            System.out.println("No invoice selected");
+            return;
+        }
+        Globals.invoiceid = jTable2.getModel().getValueAt(row,1).toString();
+        Globals.ticketid = getTicketFromInvoice(Globals.invoiceid);
+        
+        String sql = "select deleteinvoice(?)";
+        try (
+        PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+        stmt.setString(1, Globals.invoiceid);
+        stmt.executeQuery();
+        }
+        catch(Exception e) {
+        System.out.println(e.getMessage());
+        }
+        
+        sql = "select delete_assigned(?)";
+        try (
+        PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+        stmt.setInt(1, Globals.ticketid);
+        stmt.executeQuery();
+        }
+        catch(Exception e) {
+        System.out.println(e.getMessage());
+        }
+        
+        sql = "select deleteticket(?)";
+        try (
+        PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+        stmt.setInt(1, Globals.ticketid);
+        stmt.executeQuery();
+        }
+        catch(Exception e) {
+        System.out.println(e.getMessage());
+        }
+        Globals.invoiceid = "-1";
+        Globals.ticketid = -1;
+        updateInvoices();
+        updateTickets();
+        updateRecentInvoices();
+        
     }//GEN-LAST:event_jButton12ActionPerformed
 
     private void jButton13ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton13ActionPerformed
+        int row = -1;
+        row = jTable1.getSelectedRow();
+        if (row < 0)
+        {
+            System.out.println("No ticket selected");
+            return;
+        }
+        Globals.ticketid = Integer.parseInt(jTable1.getModel().getValueAt(row,0).toString()); 
+        if (!getStatus(Globals.ticketid).equals("Completed"))
+        {
+            System.out.println("Ticket must be completed to create invoice");
+            return;
+        }
+        Globals.invoiceid = "-1";
         Invoices i = new Invoices();
+        i.setParentObject(this);
         i.setVisible(true);
     }//GEN-LAST:event_jButton13ActionPerformed
 
@@ -1103,7 +1340,18 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_jTextField1ActionPerformed
 
     private void jButton14ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton14ActionPerformed
+        //OPENS EXISTING
+        int row = -1;
+        row = jTable2.getSelectedRow();
+        if (row < 0)
+        {
+            System.out.println("No invoice selected");
+            return;
+        }
+        Globals.invoiceid = jTable2.getModel().getValueAt(row,1).toString(); 
+        Globals.ticketid = getTicketFromInvoice(Globals.invoiceid);
         Invoices i = new Invoices();
+        i.setParentObject(this);
         i.setVisible(true);
     }//GEN-LAST:event_jButton14ActionPerformed
 
@@ -1116,8 +1364,6 @@ public class MainWindow extends javax.swing.JFrame {
             return;
         }
         Globals.ticketid = Integer.parseInt(jTable1.getModel().getValueAt(row,0).toString()); 
-        /////////
-       
         String sql = "select * from getreceived(?)";
 
         try (
@@ -1125,22 +1371,117 @@ public class MainWindow extends javax.swing.JFrame {
             stmt.setInt(1,Globals.ticketid);
             ResultSet rs = stmt.executeQuery();
             if (rs.next())
-                Globals.ticketreceived = rs.getTimestamp(1).toString();
+                Globals.ticketreceived = rs.getString(1);
             
             }
         catch(Exception e) {
             System.out.println(e.getMessage());
         }
-        /////////
         AddTicket a = new AddTicket();
-        String[] tmp = jTable1.getModel().getValueAt(row,0).toString().split("");
+        //String[] tmp = jTable1.getModel().getValueAt(row,0).toString().split("");
         a.setParentObject(this);
         a.setVisible(true);
     }//GEN-LAST:event_jButton5ActionPerformed
 
     private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton6ActionPerformed
-        // TODO add your handling code here:
+        //OPENS EXISTING
+        int row = -1;
+        row = jTable3.getSelectedRow();
+        if (row < 0)
+        {
+            System.out.println("No invoice selected");
+            return;
+        }
+        Globals.invoiceid = jTable3.getModel().getValueAt(row,0).toString();
+        Globals.ticketid = getTicketFromInvoice(Globals.invoiceid);
+        Invoices i = new Invoices();
+        i.setParentObject(this);
+        i.setVisible(true);
     }//GEN-LAST:event_jButton6ActionPerformed
+
+    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+        // CHECK IN
+        int row = -1;
+        row = jTable1.getSelectedRow();
+        if (row < 0)
+        {
+            System.out.println("No ticket selected");
+            return;
+        }
+        if (!getStatus(Integer.parseInt(jTable1.getModel().getValueAt(row,0).toString())).equals("Assigned"))
+        {
+            System.out.println("Ticket must be assigned before checking in");
+            return;
+        }
+        //Globals.ticketid = Integer.parseInt(jTable1.getModel().getValueAt(row,0).toString()); 
+        changeStatus(Integer.parseInt(jTable1.getModel().getValueAt(row,0).toString()), "In Progress");
+        String sql = "select check_in(?)";
+
+        try (
+            PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+            stmt.setInt(1,Integer.parseInt(jTable1.getModel().getValueAt(row,0).toString()));
+            stmt.executeQuery();
+            }
+
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }
+        updateTickets();
+    }//GEN-LAST:event_jButton1ActionPerformed
+
+    private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
+        // CHECK OUT
+        int row = -1;
+        row = jTable1.getSelectedRow();
+        if (row < 0)
+        {
+            System.out.println("No ticket selected");
+            return;
+        }
+        if (!getStatus(Integer.parseInt(jTable1.getModel().getValueAt(row,0).toString())).equals("In Progress"))
+        {
+            System.out.println("Ticket must be in progress before checking out");
+            return;
+        }
+        //Globals.ticketid = Integer.parseInt(jTable1.getModel().getValueAt(row,0).toString()); 
+        changeStatus(Integer.parseInt(jTable1.getModel().getValueAt(row,0).toString()), "Completed");
+                String sql = "select check_out(?)";
+
+        try (
+            PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+            stmt.setInt(1,Integer.parseInt(jTable1.getModel().getValueAt(row,0).toString()));
+            stmt.executeQuery();
+            }
+
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }
+        updateTickets();
+    }//GEN-LAST:event_jButton4ActionPerformed
+
+    private void jTextField1KeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTextField1KeyReleased
+        updateInvoices();
+    }//GEN-LAST:event_jTextField1KeyReleased
+
+    private void jRadioButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton1ActionPerformed
+        updateInvoices();
+    }//GEN-LAST:event_jRadioButton1ActionPerformed
+
+    private void jRadioButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton2ActionPerformed
+        updateInvoices();
+    }//GEN-LAST:event_jRadioButton2ActionPerformed
+
+    private void jRadioButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton3ActionPerformed
+        updateInvoices();
+    }//GEN-LAST:event_jRadioButton3ActionPerformed
+
+    private void jTextField2KeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTextField2KeyReleased
+        updateInvoices();
+    }//GEN-LAST:event_jTextField2KeyReleased
+
+    private void jTextField8KeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTextField8KeyReleased
+        updateInvoices();
+    }//GEN-LAST:event_jTextField8KeyReleased
  
     
     private void setColor(JPanel panel, int c){
@@ -1161,6 +1502,7 @@ public class MainWindow extends javax.swing.JFrame {
     private javax.swing.JPanel homePanel;
     private javax.swing.ButtonGroup invoiceButtonGroup;
     private javax.swing.JPanel invoicePanel;
+    private javax.swing.JButton jButton1;
     private javax.swing.JButton jButton10;
     private javax.swing.JButton jButton11;
     private javax.swing.JButton jButton12;
@@ -1168,6 +1510,7 @@ public class MainWindow extends javax.swing.JFrame {
     private javax.swing.JButton jButton14;
     private javax.swing.JButton jButton2;
     private javax.swing.JButton jButton3;
+    private javax.swing.JButton jButton4;
     private javax.swing.JButton jButton5;
     private javax.swing.JButton jButton6;
     private javax.swing.JLabel jLabel1;

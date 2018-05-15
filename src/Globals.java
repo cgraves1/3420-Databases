@@ -10,5 +10,8 @@
  */
 public class Globals {
     public static int ticketid = -1;
+    public static String invoiceid = "-1";
+    public static int employeeid = -1;
     public static String ticketreceived;
+    //public static boolean ticketWindowOpen = false;
 }

@@ -1,4 +1,5 @@
 
+import java.awt.event.WindowListener;
 import java.sql.CallableStatement;
 import java.util.Date;
 import java.sql.PreparedStatement;
@@ -11,6 +12,7 @@ import java.util.HashMap;
 import java.util.Vector;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
@@ -31,13 +33,127 @@ public class AddTicket extends javax.swing.JFrame {
     private MainWindow parentObject = null;
     HashMap<String, Integer> techMap = new HashMap<String, Integer>();
     HashMap<String, Integer> probMap = new HashMap<String, Integer>();
+    boolean editMode = false;
+    
     public AddTicket() {
+        //Globals.ticketWindowOpen = true;
         dbc = new DBConnection();
         dbc.connect();
         initComponents();
         hideIds();
         updateCustomers();
         updateFields();
+        //if editing ticket
+        checkIfEditMode();
+        if(editMode)
+        {
+            //select fields
+            updateFieldsEditMode();
+        }
+        
+    }
+    public String getStatus(int id)
+    {
+        String sql = "select get_status(?)";
+        String status = "";
+        try (
+        PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+        stmt.setInt(1, id);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next())
+            status = rs.getString(1);
+        System.out.println(status);
+        }
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }
+        return status;
+    }
+    public void changeStatus(int id, String newStatus)
+    {
+        String sql = "select set_status(?,?)";
+        try (
+        PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+        stmt.setInt(1, id);
+        stmt.setString(2, newStatus);
+        stmt.executeQuery();
+        }
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+    public void updateFieldsEditMode()
+    {
+        //get ticket info from current ticketid
+        String sql = "Select * FROM get_ticket_info(?)";
+        Object rowData[] = new Object[6];
+        try (
+            PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+            stmt.setInt(1,Globals.ticketid);
+            ResultSet rs = stmt.executeQuery();
+            //customer,location,problem,technician,eta,status
+            
+            if (rs.next()) {
+                rowData[0] = rs.getInt(1);
+                rowData[1] = rs.getInt(2);
+                rowData[2] = rs.getInt(3);
+                rowData[3] = rs.getInt(4);
+                rowData[4] = rs.getString(5);
+                rowData[5] = rs.getString(6);
+            }
+        }
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }
+        Integer desired = (Integer)rowData[0];
+        //pull relevant data from ticket
+        //select customer
+        for (int i = 0; i < jTable1.getRowCount(); i++)
+        {
+            Integer current = Integer.parseInt(jTable1.getModel().getValueAt(i,0).toString());
+
+            if (current.equals(desired))
+            {
+                jTable1.setRowSelectionInterval(i, i);
+                updateLocations(desired);
+                desired = (Integer)rowData[1];
+                //select location
+                for (int j = 0; j < jTable2.getRowCount(); j++)
+                {
+                    current = Integer.parseInt(jTable2.getModel().getValueAt(j,0).toString());
+                    if (current.equals(desired))
+                        jTable2.setRowSelectionInterval(j,j);
+                    
+                }
+                desired = (Integer)rowData[2];
+                //select problem
+                for (int j = 0; j < jComboBox3.getItemCount(); j++)
+                {
+                    current = probMap.get(jComboBox3.getItemAt(j));
+                    if(current.equals(desired))
+                        jComboBox3.setSelectedIndex(j);
+                }
+                //select technician
+                desired = (Integer)rowData[3];
+                Globals.employeeid = (Integer)rowData[3];
+                for (int j = 1; j < jComboBox4.getItemCount(); j++)
+                {
+                    current = techMap.get(jComboBox4.getItemAt(j));
+                    if(current.equals(desired))
+                        jComboBox4.setSelectedIndex(j);
+                }
+                //select eta
+                jTextField1.setText((String)rowData[4]);
+                //select status
+                jLabel14.setText((String)rowData[5]);
+                return;
+            }
+        }
+    }
+    public void checkIfEditMode()
+    {
+        if (Globals.ticketid >= 0)
+            editMode = true;
     }
     
     public void setParentObject(MainWindow obj)
@@ -80,12 +196,9 @@ public class AddTicket extends javax.swing.JFrame {
                 String name = rs.getString(2);
                 item = new Item(id,name);
                 probMap.put(item.getDescription(),item.getId());
-                //Object[] rowData = new Object[] {id, name};
-                //jComboBox3.addItem(name);
             }
             for (String s : probMap.keySet())
                 jComboBox3.addItem(s);
-            
         }
         catch(Exception e)
         {
@@ -198,7 +311,6 @@ public class AddTicket extends javax.swing.JFrame {
         jLabel6 = new javax.swing.JLabel();
         jComboBox4 = new javax.swing.JComboBox<>();
         jLabel7 = new javax.swing.JLabel();
-        jComboBox5 = new javax.swing.JComboBox<>();
         jLabel1 = new javax.swing.JLabel();
         jLabel8 = new javax.swing.JLabel();
         jScrollPane3 = new javax.swing.JScrollPane();
@@ -207,6 +319,7 @@ public class AddTicket extends javax.swing.JFrame {
         jTable2 = new javax.swing.JTable();
         jLabel12 = new javax.swing.JLabel();
         jLabel13 = new javax.swing.JLabel();
+        jLabel14 = new javax.swing.JLabel();
         jMenuBar1 = new javax.swing.JMenuBar();
         jMenu1 = new javax.swing.JMenu();
         jMenuItem1 = new javax.swing.JMenuItem();
@@ -349,6 +462,8 @@ public class AddTicket extends javax.swing.JFrame {
 
         jLabel13.setText(""+Globals.ticketreceived);
 
+        jLabel14.setText("");
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -356,18 +471,9 @@ public class AddTicket extends javax.swing.JFrame {
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                        .addGap(0, 0, Short.MAX_VALUE)
-                        .addComponent(jButton11, javax.swing.GroupLayout.PREFERRED_SIZE, 143, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(18, 18, 18)
-                        .addComponent(jButton10, javax.swing.GroupLayout.PREFERRED_SIZE, 143, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addComponent(jLabel9, javax.swing.GroupLayout.PREFERRED_SIZE, 146, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jLabel8)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, 211, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(jLabel12)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -392,22 +498,30 @@ public class AddTicket extends javax.swing.JFrame {
                                 .addGap(27, 27, 27)
                                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                                     .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 68, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                                        .addComponent(jTextField5, javax.swing.GroupLayout.DEFAULT_SIZE, 206, Short.MAX_VALUE)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(jLabel11))
-                                    .addComponent(jTextField1)
-                                    .addComponent(jScrollPane4, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)))
+                                    .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)))
                             .addGroup(jPanel1Layout.createSequentialGroup()
                                 .addComponent(jComboBox4, javax.swing.GroupLayout.PREFERRED_SIZE, 244, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 39, Short.MAX_VALUE)
-                                .addComponent(jLabel7)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jComboBox5, javax.swing.GroupLayout.PREFERRED_SIZE, 244, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                        .addGap(0, 48, Short.MAX_VALUE)))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(jLabel7)))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                                    .addComponent(jTextField5, javax.swing.GroupLayout.DEFAULT_SIZE, 206, Short.MAX_VALUE)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                    .addComponent(jLabel11))
+                                .addComponent(jTextField1)
+                                .addComponent(jScrollPane4, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
+                            .addComponent(jLabel14, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                        .addComponent(jLabel8)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, 211, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 171, Short.MAX_VALUE)
+                        .addComponent(jButton11, javax.swing.GroupLayout.PREFERRED_SIZE, 143, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(jButton10, javax.swing.GroupLayout.PREFERRED_SIZE, 143, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
@@ -417,9 +531,7 @@ public class AddTicket extends javax.swing.JFrame {
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel9, javax.swing.GroupLayout.PREFERRED_SIZE, 34, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel1)
-                    .addComponent(jLabel8)
-                    .addComponent(jLabel12)
-                    .addComponent(jLabel13))
+                    .addComponent(jLabel12))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(jLabel3)
@@ -443,12 +555,16 @@ public class AddTicket extends javax.swing.JFrame {
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jComboBox4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel6)
-                    .addComponent(jComboBox5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel7))
+                    .addComponent(jLabel7)
+                    .addComponent(jLabel14))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 65, Short.MAX_VALUE)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jButton10, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jButton11, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(jLabel8)
+                        .addComponent(jLabel13))
+                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(jButton10, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jButton11, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
         );
 
@@ -495,6 +611,8 @@ public class AddTicket extends javax.swing.JFrame {
     private void jButton11ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton11ActionPerformed
 
         int ticket_id = -1;
+        if (editMode)
+            ticket_id = Globals.ticketid;
         if (jTable1.getSelectedRow() < 0 || jTable2.getSelectedRow() < 0)
         {
             System.out.println("Select customer and address");
@@ -502,25 +620,43 @@ public class AddTicket extends javax.swing.JFrame {
         }
         String sql;
         if (jTextField1.getText().isEmpty())
-            sql = "select * from addticket(?,?)";
-//sql = "{? = call addticket(?,?)}";//sql = "select ? = addticket(?,?)"; //location, problem
+        {
+            if (editMode)
+                sql = "select * from updateticket(?,?,?)";
+            else
+                sql = "select * from addticket(?,?)";
+        }
         else
-            sql = "select * from addticket(?,?,?)";
-//sql = "{? = addticket(?,?,?)}"; //location, problem, eta
+        {
+            if (editMode)
+                sql = "select * from updateticket(?,?,?,?)";
+            else
+                sql = "select * from addticket(?,?,?)";
+        }
         try (
             PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
-            //CallableStatement stmt = dbc.conn.prepareCall(sql)){
             int row = jTable2.getSelectedRow();
-            //stmt.registerOutParameter(1, Types.INTEGER);
-            stmt.setInt(1,Integer.parseInt(jTable2.getModel().getValueAt(row,0).toString()));
-            stmt.setInt(2,probMap.get(jComboBox3.getSelectedItem().toString()));
+            if (editMode)
+            {
+                stmt.setInt(1, Globals.ticketid);
+                stmt.setInt(2,Integer.parseInt(jTable2.getModel().getValueAt(row,0).toString()));
+                stmt.setInt(3,probMap.get(jComboBox3.getSelectedItem().toString()));
+            }
+            else
+            {
+                stmt.setInt(1,Integer.parseInt(jTable2.getModel().getValueAt(row,0).toString()));
+                stmt.setInt(2,probMap.get(jComboBox3.getSelectedItem().toString()));
+            }
             if (!jTextField1.getText().equals(""))
             {
                 try{
                 SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
                 Date parsedDate =  dateFormat.parse(jTextField1.getText());
                 Timestamp ts = new Timestamp(parsedDate.getTime());
-                stmt.setTimestamp(3,ts);
+                if (editMode)
+                    stmt.setTimestamp(4,ts);
+                else
+                    stmt.setTimestamp(3,ts);
                 }
                 catch(Exception e)
                 {
@@ -529,32 +665,75 @@ public class AddTicket extends javax.swing.JFrame {
                 }
 
             }
-            //stmt.execute();
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next())
+            ResultSet rs = null;
+            if (editMode)
+                stmt.execute();
+            else
+                rs = stmt.executeQuery();
+            if (rs.next() && !editMode)
                 ticket_id = rs.getInt(1);
-            //ticket_id = stmt.getInt(1);
-            //System.out.println(ticket_id);
         }
         catch(Exception e) {
             System.out.println(e.getMessage());
         }
-        
-        //if technician is selected, assign did_work as well
-        if (jComboBox4.getSelectedIndex() > 0 && ticket_id > 0)
+        //assign technician
+        //if editing existing ticket
+        if (editMode)
         {
-            sql = "select addassign(?,?)";
-            try (
+            if (jComboBox4.getSelectedIndex() > 0) // selected tech
+            {
+                if (Globals.employeeid > 0)
+                    sql = "select updateassign(?,?)";
+                else
+                {
+                    sql = "select addassign(?,?)";
+                    changeStatus(ticket_id, "Assigned");
+                }
+                try (
                 PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
                 stmt.setInt(1, ticket_id);
                 stmt.setInt(2, techMap.get(jComboBox4.getSelectedItem().toString()));
                 stmt.executeQuery();
+                //update status of ticket
+                
+                
+                }
+                catch(Exception e) {
+                    System.out.println(e.getMessage());
+                }
             }
-            catch(Exception e) {
-            System.out.println(e.getMessage());
+            else // no tech selected
+            {
+                sql = "select delete_assigned(?)";
+                try (
+                PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+                stmt.setInt(1, ticket_id);
+                stmt.executeQuery();
+                changeStatus(ticket_id, "Unassigned");
+                }
+                catch(Exception e) {
+                    System.out.println(e.getMessage());
+                }
             }
-
         }
+        else // creating new ticket
+        {
+            if (jComboBox4.getSelectedIndex() > 0) // selected tech
+            {
+                sql = "select addassign(?,?)";
+                try (
+                PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
+                stmt.setInt(1, ticket_id);
+                stmt.setInt(2, techMap.get(jComboBox4.getSelectedItem().toString()));
+                stmt.executeQuery();
+                changeStatus(ticket_id, "Assigned");
+                }
+                catch(Exception e) {
+                    System.out.println(e.getMessage());
+                }
+            }
+        }
+
         parentObject.updateTickets();
         this.setVisible(false);
     }//GEN-LAST:event_jButton11ActionPerformed
@@ -634,6 +813,7 @@ public class AddTicket extends javax.swing.JFrame {
             }
         });
         
+        
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -641,12 +821,12 @@ public class AddTicket extends javax.swing.JFrame {
     private javax.swing.JButton jButton11;
     private javax.swing.JComboBox<String> jComboBox3;
     private javax.swing.JComboBox<String> jComboBox4;
-    private javax.swing.JComboBox<String> jComboBox5;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
     private javax.swing.JLabel jLabel12;
     private javax.swing.JLabel jLabel13;
+    private javax.swing.JLabel jLabel14;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
