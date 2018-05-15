@@ -29,6 +29,198 @@ COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 
 
 --
+-- Name: addassign(integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.addassign(tic integer, emp integer) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+begin
+insert into did_work
+(ticket_id, employee_id)
+values (tic, emp);
+end;
+$$;
+
+
+ALTER FUNCTION public.addassign(tic integer, emp integer) OWNER TO postgres;
+
+--
+-- Name: addinvoice(character varying, integer, numeric, integer, character varying); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.addinvoice(inv character varying, tic_id integer, total numeric, pay_id integer, des character varying) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+declare tmpnum varchar(10);
+begin
+insert into invoice
+(invoice_number, ticket_id, invoice_total,
+pay_method_id, invoice_desc)
+values (inv, tic_id, total, pay_id, des)
+on conflict (invoice_number) do update
+set invoice_total = total, 
+pay_method_id = pay_id,
+invoice_desc = des returning invoice_number into tmpnum; 
+return tmpnum; end; $$;
+
+
+ALTER FUNCTION public.addinvoice(inv character varying, tic_id integer, total numeric, pay_id integer, des character varying) OWNER TO postgres;
+
+--
+-- Name: addticket(integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.addticket(loc integer, prob integer) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+declare tmpid int; begin
+insert into ticket 
+(location_id, problem_id)
+values (loc, prob) returning ticket_id into tmpid; return tmpid; end;
+$$;
+
+
+ALTER FUNCTION public.addticket(loc integer, prob integer) OWNER TO postgres;
+
+--
+-- Name: addticket(integer, integer, timestamp without time zone); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.addticket(loc integer, prob integer, e timestamp without time zone) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+declare tmpid int; begin
+insert into ticket (location_id, problem_id, eta)
+values (loc, prob, e) returning ticket_id into tmpid;
+return tmpid; end; $$;
+
+
+ALTER FUNCTION public.addticket(loc integer, prob integer, e timestamp without time zone) OWNER TO postgres;
+
+--
+-- Name: check_in(integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.check_in(id integer) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+begin
+update did_work
+set start_time = now()
+where ticket_id = id;
+end; $$;
+
+
+ALTER FUNCTION public.check_in(id integer) OWNER TO postgres;
+
+--
+-- Name: check_out(integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.check_out(id integer) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+begin
+update did_work
+set end_time = now()
+where ticket_id = id;
+end; $$;
+
+
+ALTER FUNCTION public.check_out(id integer) OWNER TO postgres;
+
+--
+-- Name: delete_assigned(integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.delete_assigned(id integer) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+begin
+delete from did_work
+where did_work.ticket_id = id;
+end; $$;
+
+
+ALTER FUNCTION public.delete_assigned(id integer) OWNER TO postgres;
+
+--
+-- Name: deleteinvoice(character varying); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.deleteinvoice(id character varying) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+begin
+delete from invoice
+where invoice_number = id;
+end;
+$$;
+
+
+ALTER FUNCTION public.deleteinvoice(id character varying) OWNER TO postgres;
+
+--
+-- Name: deleteticket(integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.deleteticket(id integer) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+begin
+delete from ticket 
+where ticket_id = id;
+end;
+$$;
+
+
+ALTER FUNCTION public.deleteticket(id integer) OWNER TO postgres;
+
+--
+-- Name: get_invoice_info(integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.get_invoice_info(id integer) RETURNS TABLE(first_name character varying, last_name character varying, address character varying, city character varying, zipcode character varying, fname character varying, lname character varying, work_type character varying, start_time text, end_time text)
+    LANGUAGE plpgsql
+    AS $$ 
+begin 
+return query 
+select 
+ customer.first_name, customer.last_name, location.address, area.city, 
+ area.zipcode, employee.fname, employee.lname, problem.work_type, 
+ to_char(did_work.start_time, 'HH12:MI AM MM/DD/YY'::text), 
+ to_char(did_work.end_time, 'HH12:MI AM MM/DD/YY'::text)
+from ticket natural join location natural join customer natural join area
+ natural join problem natural join did_work inner join employee
+ on did_work.employee_id = employee.employee_id
+where ticket_id = id;
+ end; $$;
+
+
+ALTER FUNCTION public.get_invoice_info(id integer) OWNER TO postgres;
+
+--
+-- Name: get_invoice_info_full(character varying); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.get_invoice_info_full(id character varying) RETURNS TABLE(tot numeric, paymeth integer, des character varying)
+    LANGUAGE plpgsql
+    AS $$
+begin
+return query
+select
+invoice.invoice_total,
+invoice.pay_method_id,
+invoice.invoice_desc
+from invoice
+where invoice.invoice_number = id;
+end; $$;
+
+
+ALTER FUNCTION public.get_invoice_info_full(id character varying) OWNER TO postgres;
+
+--
 -- Name: get_locations(integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -46,41 +238,177 @@ END; $$;
 ALTER FUNCTION public.get_locations(cust integer) OWNER TO postgres;
 
 --
--- Name: set_status_assigned(); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: get_status(integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.set_status_assigned() RETURNS trigger
+CREATE FUNCTION public.get_status(id integer) RETURNS character varying
+    LANGUAGE plpgsql
+    AS $$
+declare stat varchar; 
+begin
+select ticket.status into stat from ticket
+where ticket.ticket_id = id;
+return stat;
+end; $$;
+
+
+ALTER FUNCTION public.get_status(id integer) OWNER TO postgres;
+
+--
+-- Name: get_tech(character varying); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.get_tech(id character varying) RETURNS character varying
+    LANGUAGE plpgsql
+    AS $$
+declare name varchar;
+begin
+select employee.fname || ' ' || employee.lname
+into name from invoice natural join ticket
+natural join did_work natural join employee
+where invoice.invoice_number = id;
+return name; end; $$;
+
+
+ALTER FUNCTION public.get_tech(id character varying) OWNER TO postgres;
+
+--
+-- Name: get_ticket_from_invoice(character varying); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.get_ticket_from_invoice(id character varying) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+declare result int;
+begin
+select invoice.ticket_id into result
+from invoice 
+where invoice.invoice_number = id;
+return result;
+end;$$;
+
+
+ALTER FUNCTION public.get_ticket_from_invoice(id character varying) OWNER TO postgres;
+
+--
+-- Name: get_ticket_info(integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.get_ticket_info(id integer) RETURNS TABLE(c_id integer, l_id integer, p_id integer, e_id integer, est timestamp without time zone, stat character varying)
+    LANGUAGE plpgsql
+    AS $$
+begin
+return query select
+customer_id, location_id, problem_id, employee_id,
+eta, status
+from ticket natural join location natural join customer 
+natural join problem left join did_work
+on did_work.ticket_id = ticket.ticket_id
+where ticket.ticket_id = id;
+end; $$;
+
+
+ALTER FUNCTION public.get_ticket_info(id integer) OWNER TO postgres;
+
+--
+-- Name: getreceived(integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.getreceived(id integer) RETURNS text
+    LANGUAGE plpgsql
+    AS $$
+declare tmptime text;
+begin
+select to_char(received, 'HH12:MI AM MM/DD/YY'::text) into tmptime
+from ticket
+where ticket_id = id; return tmptime;
+end; $$;
+
+
+ALTER FUNCTION public.getreceived(id integer) OWNER TO postgres;
+
+--
+-- Name: invoice_in_date(character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.invoice_in_date(id character varying, begin character varying, ending character varying) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+declare exists integer;
+begin
+select count("invoice_number") into exists
+from invoice natural join ticket natural join did_work
+where invoice.invoice_number = id and
+did_work.end_time between begin::timestamp and
+ending::timestamp;
+return exists; end; $$;
+
+
+ALTER FUNCTION public.invoice_in_date(id character varying, begin character varying, ending character varying) OWNER TO postgres;
+
+--
+-- Name: set_status(integer, character varying); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.set_status(id integer, stat character varying) RETURNS void
     LANGUAGE plpgsql
     AS $$
 begin
 update ticket
-set status = 'Assigned'
-from did_work
-where ticket.ticket_id = did_work.ticket_id and
-ticket.status = 'Unassigned';
-return new;
+set status = stat
+where ticket_id = id;
 end; $$;
 
 
-ALTER FUNCTION public.set_status_assigned() OWNER TO postgres;
+ALTER FUNCTION public.set_status(id integer, stat character varying) OWNER TO postgres;
 
 --
--- Name: set_status_closed(); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: updateassign(integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION public.set_status_closed() RETURNS trigger
+CREATE FUNCTION public.updateassign(tic integer, emp integer) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+begin
+update did_work
+set employee_id = emp
+where ticket_id = tic;
+end; $$;
+
+
+ALTER FUNCTION public.updateassign(tic integer, emp integer) OWNER TO postgres;
+
+--
+-- Name: updateticket(integer, integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.updateticket(id integer, loc integer, prob integer) RETURNS void
     LANGUAGE plpgsql
     AS $$
 begin
 update ticket
-set status = 'Closed'
-from invoice
-where ticket.ticket_id = invoice.ticket_id;
-return new;
+set location_id = loc, problem_id = prob
+where ticket_id = id;
 end; $$;
 
 
-ALTER FUNCTION public.set_status_closed() OWNER TO postgres;
+ALTER FUNCTION public.updateticket(id integer, loc integer, prob integer) OWNER TO postgres;
+
+--
+-- Name: updateticket(integer, integer, integer, timestamp without time zone); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.updateticket(id integer, loc integer, prob integer, e timestamp without time zone) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+begin
+update ticket
+set location_id = loc, problem_id = prob, eta = e
+where ticket_id = id;
+end; $$;
+
+
+ALTER FUNCTION public.updateticket(id integer, loc integer, prob integer, e timestamp without time zone) OWNER TO postgres;
 
 SET default_tablespace = data;
 
@@ -238,6 +566,21 @@ CREATE SEQUENCE public.employee_id_seq
 
 ALTER TABLE public.employee_id_seq OWNER TO postgres;
 
+SET default_tablespace = '';
+
+--
+-- Name: id; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.id (
+    last_value bigint
+);
+
+
+ALTER TABLE public.id OWNER TO postgres;
+
+SET default_tablespace = data;
+
 --
 -- Name: invoice; Type: TABLE; Schema: public; Owner: postgres; Tablespace: data
 --
@@ -246,9 +589,8 @@ CREATE TABLE public.invoice (
     invoice_number character varying(10) NOT NULL,
     ticket_id integer NOT NULL,
     invoice_total numeric(10,2) NOT NULL,
-    invoice_date date NOT NULL,
-    invoice_desc character varying(200),
-    pay_method_id integer
+    pay_method_id integer,
+    invoice_desc character varying(200)
 );
 
 
@@ -292,12 +634,13 @@ CREATE VIEW public.invoiceview AS
  SELECT customer.first_name,
     customer.last_name,
     invoice.invoice_number,
-    invoice.invoice_date,
+    to_char(did_work.end_time, 'MM/DD/YY'::text) AS date,
     invoice.invoice_total
-   FROM (((public.invoice
+   FROM ((((public.invoice
      JOIN public.ticket USING (ticket_id))
      JOIN public.location USING (location_id))
-     JOIN public.customer USING (customer_id));
+     JOIN public.customer USING (customer_id))
+     JOIN public.did_work USING (ticket_id));
 
 
 ALTER TABLE public.invoiceview OWNER TO postgres;
@@ -518,17 +861,44 @@ ALTER SEQUENCE public.problem_problem_id_seq OWNED BY public.problem.problem_id;
 
 
 --
+-- Name: problemview; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW public.problemview AS
+ SELECT problem.problem_id,
+    problem.work_type
+   FROM public.problem;
+
+
+ALTER TABLE public.problemview OWNER TO postgres;
+
+--
 -- Name: recentinvoiceview; Type: VIEW; Schema: public; Owner: postgres
 --
 
 CREATE VIEW public.recentinvoiceview AS
  SELECT invoice.invoice_number
-   FROM public.invoice
-  ORDER BY invoice.invoice_date
+   FROM ((public.invoice
+     JOIN public.ticket USING (ticket_id))
+     JOIN public.did_work USING (ticket_id))
+  ORDER BY did_work.end_time DESC
  LIMIT 20;
 
 
 ALTER TABLE public.recentinvoiceview OWNER TO postgres;
+
+--
+-- Name: technicianview; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW public.technicianview AS
+ SELECT employee.employee_id,
+    employee.fname,
+    employee.lname
+   FROM public.employee;
+
+
+ALTER TABLE public.technicianview OWNER TO postgres;
 
 --
 -- Name: ticket_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -642,12 +1012,17 @@ COPY public.billing_address (customer_id, location_id) FROM stdin;
 --
 
 COPY public.customer (customer_id, first_name, last_name, phone) FROM stdin;
-1	john	doe	6613338395
-2	Jerry	Cole	6613235628
 3	Robert	Baratheon	6618374939
-4	Gordon	Freeman	6619938473
-5	Geralt	Rivia	6613982938
-6	Lara	Croft	6614894829
+7	Ned	Stark	6613839283
+9	Khal	Drogo	6615738493
+10	Tyrion	Lannister	6614739273
+11	Daenerys	Targaryen	6613375838
+6	Joffrey	Baratheon	6614894829
+5	Sandor	Clegane	6613982938
+4	Arya	Stark	6619938473
+2	Petyr	Baelish	6613235628
+1	Margaery	Tyrell	6613338395
+12	Roose	Bolton	6612837193
 \.
 
 
@@ -655,7 +1030,7 @@ COPY public.customer (customer_id, first_name, last_name, phone) FROM stdin;
 -- Name: customer_customer_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.customer_customer_id_seq', 6, true);
+SELECT pg_catalog.setval('public.customer_customer_id_seq', 12, true);
 
 
 --
@@ -670,11 +1045,10 @@ SELECT pg_catalog.setval('public.customer_id_seq', 1, false);
 --
 
 COPY public.did_work (ticket_id, employee_id, start_time, end_time) FROM stdin;
-6	4	\N	\N
-11	2	\N	\N
-9	5	\N	\N
-5	1	\N	\N
-10	5	\N	\N
+78	3	2018-05-14 19:56:28.583454	2018-05-14 19:56:30.374662
+10	4	2018-05-14 20:48:35.890776	2018-05-14 20:48:40.37478
+66	3	2018-05-14 16:29:07.569567	2018-04-05 12:12:12
+84	5	2018-05-14 22:26:33.366951	2018-05-14 22:26:35.922487
 \.
 
 
@@ -706,12 +1080,22 @@ SELECT pg_catalog.setval('public.employee_id_seq', 1, true);
 
 
 --
+-- Data for Name: id; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.id (last_value) FROM stdin;
+\.
+
+
+--
 -- Data for Name: invoice; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.invoice (invoice_number, ticket_id, invoice_total, invoice_date, invoice_desc, pay_method_id) FROM stdin;
-90013	6	175.00	2018-05-03	Repaired problem	3
-90014	6	175.00	2018-05-03	Fixed mainline	2
+COPY public.invoice (invoice_number, ticket_id, invoice_total, pay_method_id, invoice_desc) FROM stdin;
+10001	10	100.99	5	etstdklafjlsdk
+80003	66	127.51	3	Repaired Mainline
+93483	78	100.22	5	Install moen faucet
+19	84	101.10	5	repaired faucet leaking
 \.
 
 
@@ -836,14 +1220,10 @@ SELECT pg_catalog.setval('public.problem_problem_id_seq', 7, true);
 --
 
 COPY public.ticket (ticket_id, location_id, problem_id, eta, status, received) FROM stdin;
-4	1	1	2018-04-21 15:30:00	Unassigned	2018-04-28 09:14:22.965322
-7	4	3	\N	Unassigned	2018-05-06 15:18:01.975229
-12	9	4	\N	Unassigned	2018-05-06 15:19:19.109398
-11	6	3	\N	Assigned	2018-05-06 15:19:13.869928
-9	5	2	\N	Assigned	2018-05-06 15:19:02.558227
-5	2	1	2018-04-22 10:15:00	Closed	2018-04-28 09:14:47.428202
-6	1	1	2018-04-22 08:15:00	Closed	2018-04-28 09:15:00.659674
-10	8	5	\N	Assigned	2018-05-06 15:19:08.798049
+66	7	1	2018-10-11 05:05:12	Closed	2018-05-12 17:22:20.583773
+78	2	5	\N	Closed	2018-05-13 13:48:38.483839
+84	5	5	\N	Closed	2018-05-14 22:26:27.587187
+10	6	5	\N	Closed	2018-05-06 15:19:08.798049
 \.
 
 
@@ -858,7 +1238,7 @@ SELECT pg_catalog.setval('public.ticket_id_seq', 1, true);
 -- Name: ticket_ticket_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.ticket_ticket_id_seq', 12, true);
+SELECT pg_catalog.setval('public.ticket_ticket_id_seq', 84, true);
 
 
 SET default_tablespace = '';
@@ -984,20 +1364,6 @@ ALTER TABLE ONLY public.ticket
 
 
 --
--- Name: assigned_trigger; Type: TRIGGER; Schema: public; Owner: postgres
---
-
-CREATE TRIGGER assigned_trigger AFTER INSERT ON public.did_work FOR EACH STATEMENT EXECUTE PROCEDURE public.set_status_assigned();
-
-
---
--- Name: closed_trigger; Type: TRIGGER; Schema: public; Owner: postgres
---
-
-CREATE TRIGGER closed_trigger AFTER INSERT ON public.invoice FOR EACH STATEMENT EXECUTE PROCEDURE public.set_status_closed();
-
-
---
 -- Name: billing_address_customer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1070,6 +1436,14 @@ ALTER TABLE ONLY public.parts_used
 
 
 --
+-- Name: ticket_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.did_work
+    ADD CONSTRAINT ticket_id FOREIGN KEY (ticket_id) REFERENCES public.ticket(ticket_id) ON DELETE CASCADE;
+
+
+--
 -- Name: ticket_location_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1126,6 +1500,26 @@ GRANT ALL ON TABLE public.customer TO plumbingdb;
 
 
 --
+-- Name: SEQUENCE customer_customer_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON SEQUENCE public.customer_customer_id_seq FROM PUBLIC;
+REVOKE ALL ON SEQUENCE public.customer_customer_id_seq FROM postgres;
+GRANT ALL ON SEQUENCE public.customer_customer_id_seq TO postgres;
+GRANT SELECT,USAGE ON SEQUENCE public.customer_customer_id_seq TO plumbingdb;
+
+
+--
+-- Name: SEQUENCE customer_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON SEQUENCE public.customer_id_seq FROM PUBLIC;
+REVOKE ALL ON SEQUENCE public.customer_id_seq FROM postgres;
+GRANT ALL ON SEQUENCE public.customer_id_seq TO postgres;
+GRANT SELECT,USAGE ON SEQUENCE public.customer_id_seq TO plumbingdb;
+
+
+--
 -- Name: TABLE customerview; Type: ACL; Schema: public; Owner: postgres
 --
 
@@ -1153,6 +1547,36 @@ REVOKE ALL ON TABLE public.employee FROM PUBLIC;
 REVOKE ALL ON TABLE public.employee FROM postgres;
 GRANT ALL ON TABLE public.employee TO postgres;
 GRANT ALL ON TABLE public.employee TO plumbingdb;
+
+
+--
+-- Name: SEQUENCE employee_employee_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON SEQUENCE public.employee_employee_id_seq FROM PUBLIC;
+REVOKE ALL ON SEQUENCE public.employee_employee_id_seq FROM postgres;
+GRANT ALL ON SEQUENCE public.employee_employee_id_seq TO postgres;
+GRANT SELECT,USAGE ON SEQUENCE public.employee_employee_id_seq TO plumbingdb;
+
+
+--
+-- Name: SEQUENCE employee_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON SEQUENCE public.employee_id_seq FROM PUBLIC;
+REVOKE ALL ON SEQUENCE public.employee_id_seq FROM postgres;
+GRANT ALL ON SEQUENCE public.employee_id_seq TO postgres;
+GRANT SELECT,USAGE ON SEQUENCE public.employee_id_seq TO plumbingdb;
+
+
+--
+-- Name: TABLE id; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON TABLE public.id FROM PUBLIC;
+REVOKE ALL ON TABLE public.id FROM postgres;
+GRANT ALL ON TABLE public.id TO postgres;
+GRANT ALL ON TABLE public.id TO plumbingdb;
 
 
 --
@@ -1196,6 +1620,36 @@ GRANT ALL ON TABLE public.invoiceview TO plumbingdb;
 
 
 --
+-- Name: SEQUENCE item_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON SEQUENCE public.item_id_seq FROM PUBLIC;
+REVOKE ALL ON SEQUENCE public.item_id_seq FROM postgres;
+GRANT ALL ON SEQUENCE public.item_id_seq TO postgres;
+GRANT SELECT,USAGE ON SEQUENCE public.item_id_seq TO plumbingdb;
+
+
+--
+-- Name: SEQUENCE location_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON SEQUENCE public.location_id_seq FROM PUBLIC;
+REVOKE ALL ON SEQUENCE public.location_id_seq FROM postgres;
+GRANT ALL ON SEQUENCE public.location_id_seq TO postgres;
+GRANT SELECT,USAGE ON SEQUENCE public.location_id_seq TO plumbingdb;
+
+
+--
+-- Name: SEQUENCE location_location_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON SEQUENCE public.location_location_id_seq FROM PUBLIC;
+REVOKE ALL ON SEQUENCE public.location_location_id_seq FROM postgres;
+GRANT ALL ON SEQUENCE public.location_location_id_seq TO postgres;
+GRANT SELECT,USAGE ON SEQUENCE public.location_location_id_seq TO plumbingdb;
+
+
+--
 -- Name: TABLE non_comm_item; Type: ACL; Schema: public; Owner: postgres
 --
 
@@ -1203,6 +1657,16 @@ REVOKE ALL ON TABLE public.non_comm_item FROM PUBLIC;
 REVOKE ALL ON TABLE public.non_comm_item FROM postgres;
 GRANT ALL ON TABLE public.non_comm_item TO postgres;
 GRANT ALL ON TABLE public.non_comm_item TO plumbingdb;
+
+
+--
+-- Name: SEQUENCE non_comm_item_item_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON SEQUENCE public.non_comm_item_item_id_seq FROM PUBLIC;
+REVOKE ALL ON SEQUENCE public.non_comm_item_item_id_seq FROM postgres;
+GRANT ALL ON SEQUENCE public.non_comm_item_item_id_seq TO postgres;
+GRANT SELECT,USAGE ON SEQUENCE public.non_comm_item_item_id_seq TO plumbingdb;
 
 
 --
@@ -1236,6 +1700,16 @@ GRANT ALL ON TABLE public.parts_used TO plumbingdb;
 
 
 --
+-- Name: SEQUENCE pay_method_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON SEQUENCE public.pay_method_id_seq FROM PUBLIC;
+REVOKE ALL ON SEQUENCE public.pay_method_id_seq FROM postgres;
+GRANT ALL ON SEQUENCE public.pay_method_id_seq TO postgres;
+GRANT SELECT,USAGE ON SEQUENCE public.pay_method_id_seq TO plumbingdb;
+
+
+--
 -- Name: TABLE payment_method; Type: ACL; Schema: public; Owner: postgres
 --
 
@@ -1246,6 +1720,46 @@ GRANT ALL ON TABLE public.payment_method TO plumbingdb;
 
 
 --
+-- Name: SEQUENCE payment_method_pay_method_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON SEQUENCE public.payment_method_pay_method_id_seq FROM PUBLIC;
+REVOKE ALL ON SEQUENCE public.payment_method_pay_method_id_seq FROM postgres;
+GRANT ALL ON SEQUENCE public.payment_method_pay_method_id_seq TO postgres;
+GRANT SELECT,USAGE ON SEQUENCE public.payment_method_pay_method_id_seq TO plumbingdb;
+
+
+--
+-- Name: SEQUENCE problem_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON SEQUENCE public.problem_id_seq FROM PUBLIC;
+REVOKE ALL ON SEQUENCE public.problem_id_seq FROM postgres;
+GRANT ALL ON SEQUENCE public.problem_id_seq TO postgres;
+GRANT SELECT,USAGE ON SEQUENCE public.problem_id_seq TO plumbingdb;
+
+
+--
+-- Name: SEQUENCE problem_problem_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON SEQUENCE public.problem_problem_id_seq FROM PUBLIC;
+REVOKE ALL ON SEQUENCE public.problem_problem_id_seq FROM postgres;
+GRANT ALL ON SEQUENCE public.problem_problem_id_seq TO postgres;
+GRANT SELECT,USAGE ON SEQUENCE public.problem_problem_id_seq TO plumbingdb;
+
+
+--
+-- Name: TABLE problemview; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON TABLE public.problemview FROM PUBLIC;
+REVOKE ALL ON TABLE public.problemview FROM postgres;
+GRANT ALL ON TABLE public.problemview TO postgres;
+GRANT ALL ON TABLE public.problemview TO plumbingdb;
+
+
+--
 -- Name: TABLE recentinvoiceview; Type: ACL; Schema: public; Owner: postgres
 --
 
@@ -1253,6 +1767,36 @@ REVOKE ALL ON TABLE public.recentinvoiceview FROM PUBLIC;
 REVOKE ALL ON TABLE public.recentinvoiceview FROM postgres;
 GRANT ALL ON TABLE public.recentinvoiceview TO postgres;
 GRANT ALL ON TABLE public.recentinvoiceview TO plumbingdb;
+
+
+--
+-- Name: TABLE technicianview; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON TABLE public.technicianview FROM PUBLIC;
+REVOKE ALL ON TABLE public.technicianview FROM postgres;
+GRANT ALL ON TABLE public.technicianview TO postgres;
+GRANT ALL ON TABLE public.technicianview TO plumbingdb;
+
+
+--
+-- Name: SEQUENCE ticket_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON SEQUENCE public.ticket_id_seq FROM PUBLIC;
+REVOKE ALL ON SEQUENCE public.ticket_id_seq FROM postgres;
+GRANT ALL ON SEQUENCE public.ticket_id_seq TO postgres;
+GRANT SELECT,USAGE ON SEQUENCE public.ticket_id_seq TO plumbingdb;
+
+
+--
+-- Name: SEQUENCE ticket_ticket_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON SEQUENCE public.ticket_ticket_id_seq FROM PUBLIC;
+REVOKE ALL ON SEQUENCE public.ticket_ticket_id_seq FROM postgres;
+GRANT ALL ON SEQUENCE public.ticket_ticket_id_seq TO postgres;
+GRANT SELECT,USAGE ON SEQUENCE public.ticket_ticket_id_seq TO plumbingdb;
 
 
 --
