@@ -8,6 +8,7 @@ import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
 
@@ -63,15 +64,20 @@ public class MainWindow extends javax.swing.JFrame {
         return status;
     }
     
-    public int checkDateQuery(String id, String begin, String end)
+    public int checkDateQuery(String id, java.sql.Date begin, java.sql.Date end)
     {
         String sql = "select invoice_in_date(?,?,?)";
         int status = 0;
         try (
         PreparedStatement stmt = dbc.conn.prepareStatement(sql)){
         stmt.setString(1, id);
-        stmt.setString(2, begin);
-        stmt.setString(3,begin);
+        //SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+        //Date parsedDate =  dateFormat.parse(begin);
+        //java.sql.Date first = new java.sql.Date(parsedDate.getTime());
+        stmt.setDate(2, begin);
+        //parsedDate = dateFormat.parse(end);
+        //java.sql.Date second = new java.sql
+        stmt.setDate(3,end);
         ResultSet rs = stmt.executeQuery();
         if (rs.next())
             status = rs.getInt(1);
@@ -190,36 +196,49 @@ public class MainWindow extends javax.swing.JFrame {
                     if (rowData[i].equals("null") || rowData[i].equals("null null"))
                         rowData[i] = "";
                 }
-                /////////NEW
-                boolean withinDate = true;
-                if(!jTextField2.getText().isEmpty() && !jTextField8.getText().isEmpty())
+                /////////NEW WIP
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                //jDateChooser1.setDateFormatString("yyyy-MM-dd");
+                //jDateChooser2.setDateFormatString("yyyy-MM-dd");
+                //String date1 = ((JTextField)jDateChooser1.getDateEditor().getUiComponent()).getText();
+                //String date2 = ((JTextField)jDateChooser2.getDateEditor().getUiComponent()).getText();
+                //System.out.println("TEST");                
+
+
+                boolean withinDates = false;
+
+                if(datePicker1.toString().isEmpty() || datePicker2.toString().isEmpty())
+                    withinDates = true;
+                else
                 {
-                    System.out.println("CHECKING DATES");
-                    withinDate = false;
-                    if (checkDateQuery(rowData[1], jTextField2.getText(), jTextField8.getText()) > 0)
-                        withinDate = true;
+                    java.sql.Date date1 = java.sql.Date.valueOf(datePicker1.getDate());
+                    java.sql.Date date2 = java.sql.Date.valueOf(datePicker2.getDate());
+                    if (checkDateQuery(rowData[1], date1, date2) > 0)
+                        withinDates = true;
                 }
-                System.out.println(""+checkDateQuery(rowData[1], jTextField2.getText(), jTextField8.getText()));
-                if (!jTextField1.getText().isEmpty())
+                //System.out.println(" : " + withinDates);
+
+                if (!jTextField1.getText().isEmpty() && (jRadioButton1.isSelected() ||
+                        jRadioButton2.isSelected() || jRadioButton3.isSelected()) && withinDates)
                 {
                     if (jRadioButton1.isSelected()) //invoice number search
                     {
-                        if (rowData[1].toLowerCase().contains(jTextField1.getText().toLowerCase()) && withinDate)
+                        if (rowData[1].toLowerCase().contains(jTextField1.getText().toLowerCase()))
                             model.addRow(rowData);
                     }
                     if (jRadioButton2.isSelected()) //customer search
                     {
-                        if (rowData[0].toLowerCase().contains(jTextField1.getText().toLowerCase()) && withinDate)
+                        if (rowData[0].toLowerCase().contains(jTextField1.getText().toLowerCase()))
                             model.addRow(rowData);
                     }
                     if (jRadioButton3.isSelected()) //tech search
                     {
-                        if (getTech(rowData[1]).toLowerCase().contains(jTextField1.getText().toLowerCase()) && withinDate)
+                        if (getTech(rowData[1]).toLowerCase().contains(jTextField1.getText().toLowerCase()))
                             model.addRow(rowData);
                     }
                     
                 }
-                else
+                else if(withinDates)
                     model.addRow(rowData);  //////////END NEW              
                 //model.addRow(rowData);
             }
@@ -307,6 +326,7 @@ public class MainWindow extends javax.swing.JFrame {
 
         jButton10 = new javax.swing.JButton();
         invoiceButtonGroup = new javax.swing.ButtonGroup();
+        jSeparator3 = new javax.swing.JSeparator();
         jPanel1 = new javax.swing.JPanel();
         jPanel2 = new javax.swing.JPanel();
         jLabel2 = new javax.swing.JLabel();
@@ -353,11 +373,12 @@ public class MainWindow extends javax.swing.JFrame {
         jLabel17 = new javax.swing.JLabel();
         jLabel18 = new javax.swing.JLabel();
         jLabel19 = new javax.swing.JLabel();
-        jTextField2 = new javax.swing.JTextField();
-        jTextField8 = new javax.swing.JTextField();
         jScrollPane3 = new javax.swing.JScrollPane();
         jTable2 = new javax.swing.JTable();
         jButton14 = new javax.swing.JButton();
+        jButton7 = new javax.swing.JButton();
+        datePicker1 = new com.github.lgooddatepicker.components.DatePicker();
+        datePicker2 = new com.github.lgooddatepicker.components.DatePicker();
         jMenuBar1 = new javax.swing.JMenuBar();
         jMenu1 = new javax.swing.JMenu();
         jMenuItem1 = new javax.swing.JMenuItem();
@@ -378,10 +399,10 @@ public class MainWindow extends javax.swing.JFrame {
 
         jPanel2.setBackground(new java.awt.Color(39, 174, 96));
 
-        jLabel2.setFont(new java.awt.Font("Ubuntu", 0, 24)); // NOI18N
-        jLabel2.setForeground(new java.awt.Color(254, 254, 254));
         jLabel2.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel2.setText("Plumbing Database");
+        jLabel2.setFont(new java.awt.Font("Ubuntu", 0, 24)); // NOI18N
+        jLabel2.setForeground(new java.awt.Color(254, 254, 254));
 
         jSeparator1.setBackground(new java.awt.Color(254, 254, 254));
         jSeparator1.setForeground(new java.awt.Color(254, 254, 254));
@@ -399,12 +420,12 @@ public class MainWindow extends javax.swing.JFrame {
             }
         });
 
-        jLabel3.setBackground(new java.awt.Color(254, 254, 254));
-        jLabel3.setFont(new java.awt.Font("Ubuntu", 0, 18)); // NOI18N
-        jLabel3.setForeground(new java.awt.Color(254, 254, 254));
         jLabel3.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel3.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Images/home.png"))); // NOI18N
         jLabel3.setText(" Home");
+        jLabel3.setBackground(new java.awt.Color(254, 254, 254));
+        jLabel3.setFont(new java.awt.Font("Ubuntu", 0, 18)); // NOI18N
+        jLabel3.setForeground(new java.awt.Color(254, 254, 254));
 
         jPanel7.setBackground(new java.awt.Color(39, 174, 96));
         jPanel7.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -419,12 +440,12 @@ public class MainWindow extends javax.swing.JFrame {
             }
         });
 
-        jLabel6.setBackground(new java.awt.Color(254, 254, 254));
-        jLabel6.setFont(new java.awt.Font("Ubuntu", 0, 18)); // NOI18N
-        jLabel6.setForeground(new java.awt.Color(254, 254, 254));
         jLabel6.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel6.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Images/logout.png"))); // NOI18N
         jLabel6.setText(" Exit");
+        jLabel6.setBackground(new java.awt.Color(254, 254, 254));
+        jLabel6.setFont(new java.awt.Font("Ubuntu", 0, 18)); // NOI18N
+        jLabel6.setForeground(new java.awt.Color(254, 254, 254));
 
         javax.swing.GroupLayout jPanel7Layout = new javax.swing.GroupLayout(jPanel7);
         jPanel7.setLayout(jPanel7Layout);
@@ -452,12 +473,12 @@ public class MainWindow extends javax.swing.JFrame {
             }
         });
 
-        jLabel5.setBackground(new java.awt.Color(254, 254, 254));
-        jLabel5.setFont(new java.awt.Font("Ubuntu", 0, 18)); // NOI18N
-        jLabel5.setForeground(new java.awt.Color(254, 254, 254));
         jLabel5.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel5.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Images/medical-history.png"))); // NOI18N
         jLabel5.setText("Reports");
+        jLabel5.setBackground(new java.awt.Color(254, 254, 254));
+        jLabel5.setFont(new java.awt.Font("Ubuntu", 0, 18)); // NOI18N
+        jLabel5.setForeground(new java.awt.Color(254, 254, 254));
 
         javax.swing.GroupLayout jPanel6Layout = new javax.swing.GroupLayout(jPanel6);
         jPanel6.setLayout(jPanel6Layout);
@@ -488,12 +509,12 @@ public class MainWindow extends javax.swing.JFrame {
             }
         });
 
-        jLabel4.setBackground(new java.awt.Color(254, 254, 254));
-        jLabel4.setFont(new java.awt.Font("Ubuntu", 0, 18)); // NOI18N
-        jLabel4.setForeground(new java.awt.Color(254, 254, 254));
         jLabel4.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel4.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Images/invoice.png"))); // NOI18N
         jLabel4.setText(" Invoices");
+        jLabel4.setBackground(new java.awt.Color(254, 254, 254));
+        jLabel4.setFont(new java.awt.Font("Ubuntu", 0, 18)); // NOI18N
+        jLabel4.setForeground(new java.awt.Color(254, 254, 254));
 
         javax.swing.GroupLayout jPanel5Layout = new javax.swing.GroupLayout(jPanel5);
         jPanel5.setLayout(jPanel5Layout);
@@ -571,9 +592,9 @@ public class MainWindow extends javax.swing.JFrame {
 
         jPanel3.setBackground(new java.awt.Color(230, 126, 34));
 
+        jLabel1.setText("TICKETS");
         jLabel1.setFont(new java.awt.Font("Ubuntu", 0, 20)); // NOI18N
         jLabel1.setForeground(new java.awt.Color(254, 254, 254));
-        jLabel1.setText("TICKETS");
 
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
@@ -655,10 +676,10 @@ public class MainWindow extends javax.swing.JFrame {
             jTable1.getColumnModel().getColumn(3).setPreferredWidth(40);
         }
 
+        jButton2.setText("Delete");
         jButton2.setBackground(new java.awt.Color(204, 0, 0));
         jButton2.setFont(new java.awt.Font("Dialog", 1, 14)); // NOI18N
         jButton2.setForeground(new java.awt.Color(255, 255, 255));
-        jButton2.setText("Delete");
         jButton2.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jButton2ActionPerformed(evt);
@@ -702,9 +723,9 @@ public class MainWindow extends javax.swing.JFrame {
 
         jSeparator2.setOrientation(javax.swing.SwingConstants.VERTICAL);
 
+        jLabel9.setText("Recent Invoices");
         jLabel9.setFont(new java.awt.Font("Ubuntu", 1, 18)); // NOI18N
         jLabel9.setForeground(new java.awt.Color(0, 0, 0));
-        jLabel9.setText("Recent Invoices");
 
         jButton6.setText("Open");
         jButton6.addActionListener(new java.awt.event.ActionListener() {
@@ -791,9 +812,9 @@ public class MainWindow extends javax.swing.JFrame {
 
         jPanel12.setBackground(new java.awt.Color(230, 126, 34));
 
+        jLabel8.setText("GENERATE REPORT");
         jLabel8.setFont(new java.awt.Font("Ubuntu", 0, 20)); // NOI18N
         jLabel8.setForeground(new java.awt.Color(254, 254, 254));
-        jLabel8.setText("GENERATE REPORT");
 
         javax.swing.GroupLayout jPanel12Layout = new javax.swing.GroupLayout(jPanel12);
         jPanel12.setLayout(jPanel12Layout);
@@ -842,9 +863,9 @@ public class MainWindow extends javax.swing.JFrame {
 
         jPanel10.setBackground(new java.awt.Color(230, 126, 34));
 
+        jLabel7.setText("INVOICES");
         jLabel7.setFont(new java.awt.Font("Ubuntu", 0, 20)); // NOI18N
         jLabel7.setForeground(new java.awt.Color(254, 254, 254));
-        jLabel7.setText("INVOICES");
 
         javax.swing.GroupLayout jPanel10Layout = new javax.swing.GroupLayout(jPanel10);
         jPanel10.setLayout(jPanel10Layout);
@@ -907,23 +928,11 @@ public class MainWindow extends javax.swing.JFrame {
 
         jLabel17.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Search.png"))); // NOI18N
 
-        jLabel18.setForeground(new java.awt.Color(51, 51, 51));
         jLabel18.setText("From: ");
+        jLabel18.setForeground(new java.awt.Color(51, 51, 51));
 
-        jLabel19.setForeground(new java.awt.Color(51, 51, 51));
         jLabel19.setText("To:");
-
-        jTextField2.addKeyListener(new java.awt.event.KeyAdapter() {
-            public void keyReleased(java.awt.event.KeyEvent evt) {
-                jTextField2KeyReleased(evt);
-            }
-        });
-
-        jTextField8.addKeyListener(new java.awt.event.KeyAdapter() {
-            public void keyReleased(java.awt.event.KeyEvent evt) {
-                jTextField8KeyReleased(evt);
-            }
-        });
+        jLabel19.setForeground(new java.awt.Color(51, 51, 51));
 
         jTable2.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -987,6 +996,13 @@ public class MainWindow extends javax.swing.JFrame {
             }
         });
 
+        jButton7.setText("Refresh");
+        jButton7.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton7ActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout invoicePanelLayout = new javax.swing.GroupLayout(invoicePanel);
         invoicePanel.setLayout(invoicePanelLayout);
         invoicePanelLayout.setHorizontalGroup(
@@ -997,15 +1013,16 @@ public class MainWindow extends javax.swing.JFrame {
                 .addGroup(invoicePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 1261, Short.MAX_VALUE)
                     .addGroup(invoicePanelLayout.createSequentialGroup()
-                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(jButton7)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(jLabel18)
-                        .addGap(18, 18, 18)
-                        .addComponent(jTextField2, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(datePicker1, javax.swing.GroupLayout.PREFERRED_SIZE, 193, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jLabel19)
-                        .addGap(18, 18, 18)
-                        .addComponent(jTextField8, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(18, 18, 18)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(datePicker2, javax.swing.GroupLayout.PREFERRED_SIZE, 193, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jRadioButton1)
                         .addGap(18, 18, 18)
                         .addComponent(jRadioButton2)
@@ -1034,8 +1051,9 @@ public class MainWindow extends javax.swing.JFrame {
                         .addComponent(jRadioButton3)
                         .addComponent(jLabel18)
                         .addComponent(jLabel19)
-                        .addComponent(jTextField2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(jTextField8, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(jButton7)
+                        .addComponent(datePicker1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(datePicker2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(jLabel17))
                 .addGap(18, 18, 18)
                 .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 543, Short.MAX_VALUE)
@@ -1464,24 +1482,20 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_jTextField1KeyReleased
 
     private void jRadioButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton1ActionPerformed
-        updateInvoices();
+        //updateInvoices();
     }//GEN-LAST:event_jRadioButton1ActionPerformed
 
     private void jRadioButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton2ActionPerformed
-        updateInvoices();
+        //updateInvoices();
     }//GEN-LAST:event_jRadioButton2ActionPerformed
 
     private void jRadioButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton3ActionPerformed
-        updateInvoices();
+        //updateInvoices();
     }//GEN-LAST:event_jRadioButton3ActionPerformed
 
-    private void jTextField2KeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTextField2KeyReleased
+    private void jButton7ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton7ActionPerformed
         updateInvoices();
-    }//GEN-LAST:event_jTextField2KeyReleased
-
-    private void jTextField8KeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTextField8KeyReleased
-        updateInvoices();
-    }//GEN-LAST:event_jTextField8KeyReleased
+    }//GEN-LAST:event_jButton7ActionPerformed
  
     
     private void setColor(JPanel panel, int c){
@@ -1499,6 +1513,8 @@ public class MainWindow extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel connLabel;
+    private com.github.lgooddatepicker.components.DatePicker datePicker1;
+    private com.github.lgooddatepicker.components.DatePicker datePicker2;
     private javax.swing.JPanel homePanel;
     private javax.swing.ButtonGroup invoiceButtonGroup;
     private javax.swing.JPanel invoicePanel;
@@ -1513,6 +1529,7 @@ public class MainWindow extends javax.swing.JFrame {
     private javax.swing.JButton jButton4;
     private javax.swing.JButton jButton5;
     private javax.swing.JButton jButton6;
+    private javax.swing.JButton jButton7;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel17;
     private javax.swing.JLabel jLabel18;
@@ -1547,12 +1564,11 @@ public class MainWindow extends javax.swing.JFrame {
     private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator2;
+    private javax.swing.JSeparator jSeparator3;
     private javax.swing.JTable jTable1;
     private javax.swing.JTable jTable2;
     private javax.swing.JTable jTable3;
     private javax.swing.JTextField jTextField1;
-    private javax.swing.JTextField jTextField2;
-    private javax.swing.JTextField jTextField8;
     private javax.swing.JPanel reportPanel;
     private javax.swing.JPanel ticketPanel;
     // End of variables declaration//GEN-END:variables

@@ -13,5 +13,6 @@ public class Globals {
     public static String invoiceid = "-1";
     public static int employeeid = -1;
     public static String ticketreceived;
+    public static String paymentmethod = "";
     //public static boolean ticketWindowOpen = false;
 }
