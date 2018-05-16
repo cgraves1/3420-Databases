@@ -99,6 +99,25 @@ return tmpid; end; $$;
 ALTER FUNCTION public.addticket(loc integer, prob integer, e timestamp without time zone) OWNER TO postgres;
 
 --
+-- Name: check_date(character varying, date, date); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.check_date(id character varying, begining date, ending date) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+declare exists integer;
+begin
+select count("invoice_number") into exists
+from invoice natural join ticket natural join did_work
+where invoice.invoice_number = id and
+did_work.end_time >= begining and 
+did_work.end_time <= ending;
+return exists; end; $$;
+
+
+ALTER FUNCTION public.check_date(id character varying, begining date, ending date) OWNER TO postgres;
+
+--
 -- Name: check_in(integer); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -219,6 +238,43 @@ end; $$;
 
 
 ALTER FUNCTION public.get_invoice_info_full(id character varying) OWNER TO postgres;
+
+--
+-- Name: get_invoice_report(character varying); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.get_invoice_report(id character varying) RETURNS TABLE(invnum character varying, cfname character varying, clname character varying, caddress character varying, ccity character varying, cstate character varying, czip character varying, des character varying, total numeric, paymethod character varying, efname character varying, elname character varying, starttime timestamp without time zone, endtime timestamp without time zone)
+    LANGUAGE plpgsql
+    AS $$
+begin
+return query
+select 
+invoice.invoice_number, 
+customer.first_name, 
+customer.last_name,
+location.address,
+area.city,
+area.state,
+area.zipcode, 
+invoice.invoice_desc,
+invoice.invoice_total,
+payment_method.payment_type,
+employee.fname,
+employee.lname,
+did_work.start_time,
+did_work.end_time
+from invoice natural join ticket natural join did_work
+natural join employee, 
+location natural join area natural join customer, payment_method
+where invoice.invoice_number = id and
+invoice.ticket_id = ticket.ticket_id and
+ticket.ticket_id = did_work.ticket_id and
+ticket.location_id = location.location_id and 
+invoice.pay_method_id = payment_method.pay_method_id;
+end; $$;
+
+
+ALTER FUNCTION public.get_invoice_report(id character varying) OWNER TO postgres;
 
 --
 -- Name: get_locations(integer); Type: FUNCTION; Schema: public; Owner: postgres
@@ -1012,17 +1068,106 @@ COPY public.billing_address (customer_id, location_id) FROM stdin;
 --
 
 COPY public.customer (customer_id, first_name, last_name, phone) FROM stdin;
-3	Robert	Baratheon	6618374939
-7	Ned	Stark	6613839283
-9	Khal	Drogo	6615738493
-10	Tyrion	Lannister	6614739273
-11	Daenerys	Targaryen	6613375838
-6	Joffrey	Baratheon	6614894829
-5	Sandor	Clegane	6613982938
-4	Arya	Stark	6619938473
-2	Petyr	Baelish	6613235628
-1	Margaery	Tyrell	6613338395
-12	Roose	Bolton	6612837193
+17	Dean	Jacobson	6400771818
+18	Stone	Hanson	5201111396
+19	Dylan	Bradford	7190877031
+20	Aidan	Hale	1418283856
+21	Ryan	Pace	3285067715
+22	Fitzgerald	Allen	7551886809
+23	Elaine	Ellison	2273929502
+24	Tate	Oneil	9569245993
+25	Cedric	Barker	7237436536
+26	Rina	Walter	2710042635
+27	Leonard	Mcclain	6788844145
+28	Jonas	Willis	1752591306
+29	Reece	Fuller	9834561805
+30	Tatum	Callahan	3710447522
+31	Madeline	Kirby	2773091434
+32	Amity	Reeves	3972120879
+33	Petra	Ratliff	1258672616
+34	Scott	Barker	6465525825
+35	Rhonda	Boyd	4879561507
+36	Bo	Rivera	7471623549
+37	Nathaniel	Levy	610354320
+38	Derek	Caldwell	8458794743
+39	Asher	Clements	6374772431
+40	Isabella	Robertson	3587634304
+41	Tallulah	Rowland	173320610
+42	Tarik	Meyers	6715842128
+43	Colorado	Ray	3632296807
+44	Kyle	Wood	2753388879
+45	Cameron	Jacobson	2779072442
+46	Inga	Santana	8636251580
+47	Leilani	Warner	2090087719
+48	Kay	Farley	4084775286
+49	Pearl	Bridges	4314485689
+50	Trevor	Kelley	1136445113
+51	Autumn	Thompson	6707068180
+52	Merritt	Young	6783549160
+53	Lillian	Klein	451444347
+54	Iliana	Robertson	7688190237
+55	Echo	Cruz	7388523046
+56	Drew	Tyler	2370647755
+57	Holmes	Walls	5435074752
+58	Scott	Giles	8082348622
+59	Shaeleigh	Eaton	3822654987
+60	Aaron	Hull	8662917247
+61	Myra	Berry	6413775835
+62	Geraldine	Mitchell	7647902935
+63	Theodore	Houston	7849525415
+64	Cain	Chaney	828368747
+65	Brian	Erickson	4248160112
+66	Madison	Wiley	7722026552
+67	Ignatius	Collins	3332763401
+68	Scarlett	Gallagher	2040125096
+69	Rudyard	Olsen	6065109027
+70	Nolan	Oliver	5794425631
+71	Abigail	Murphy	965366326
+72	Rebecca	Merrill	724532471
+73	Hammett	Vincent	5845526292
+74	Hamish	Peters	80158153
+75	Ahmed	Nguyen	3138707737
+76	Ella	Lara	491977313
+77	Macey	Keith	5115599427
+78	Justina	Kennedy	4792955839
+79	Sebastian	Wise	5150435315
+80	Ashely	Mason	4689257919
+81	Hunter	Stanley	9024129012
+82	Emery	Johnston	2464886135
+83	Maris	Blackwell	5671841469
+84	Bernard	Petersen	7729176946
+85	Zenaida	Chambers	6646360833
+86	Kuame	Pratt	6993543408
+87	Kiayada	Heath	6833575635
+88	Shaeleigh	Kane	2409595609
+89	Jarrod	Dudley	5758323157
+90	Zorita	Nichols	4425742061
+91	Patricia	Hood	6247822198
+92	Alec	Rivas	4007559386
+93	Armand	Bond	8623815496
+94	Troy	Crawford	4638577716
+95	Colin	Ferguson	5578163482
+96	Amaya	Lee	3112183251
+97	Caesar	Gill	8536014098
+98	Alika	Kinney	9032076046
+99	Wang	Singleton	5508621057
+100	Calista	Chandler	7055965066
+101	Audra	Kidd	8808621140
+102	Dolan	Acevedo	7574663520
+103	Elton	Nichols	4317815856
+104	Joan	Herman	2197136038
+105	Chiquita	Cole	3820458754
+106	Odessa	Whitfield	7685846565
+107	Hunter	Sweeney	884261904
+108	Camden	Browning	9355578825
+109	Branden	Cain	99379785
+110	Jacob	Ingram	4684267501
+111	Castor	Sanders	1070725248
+112	Gretchen	Neal	7314305309
+113	Amber	Morin	3343656597
+114	Clinton	Aguirre	6927790940
+115	Jack	Buckley	6231776205
+116	Stephen	Buckner	64420506
 \.
 
 
@@ -1030,7 +1175,7 @@ COPY public.customer (customer_id, first_name, last_name, phone) FROM stdin;
 -- Name: customer_customer_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.customer_customer_id_seq', 12, true);
+SELECT pg_catalog.setval('public.customer_customer_id_seq', 116, true);
 
 
 --
@@ -1045,10 +1190,107 @@ SELECT pg_catalog.setval('public.customer_id_seq', 1, false);
 --
 
 COPY public.did_work (ticket_id, employee_id, start_time, end_time) FROM stdin;
-78	3	2018-05-14 19:56:28.583454	2018-05-14 19:56:30.374662
-10	4	2018-05-14 20:48:35.890776	2018-05-14 20:48:40.37478
-66	3	2018-05-14 16:29:07.569567	2018-04-05 12:12:12
-84	5	2018-05-14 22:26:33.366951	2018-05-14 22:26:35.922487
+222	25	2018-05-16 15:13:39.346008	2018-05-16 15:13:40.976969
+122	9	2017-09-01 00:00:00	2017-09-01 00:00:00
+123	13	2017-09-02 00:00:00	2017-09-02 00:00:00
+124	18	2017-09-03 00:00:00	2017-09-03 00:00:00
+125	7	2017-09-04 00:00:00	2017-09-04 00:00:00
+126	14	2017-09-05 00:00:00	2017-09-05 00:00:00
+127	14	2017-09-06 00:00:00	2017-09-06 00:00:00
+128	22	2017-09-07 00:00:00	2017-09-07 00:00:00
+129	14	2017-09-08 00:00:00	2017-09-08 00:00:00
+130	8	2017-09-09 00:00:00	2017-09-09 00:00:00
+131	24	2017-09-10 00:00:00	2017-09-10 00:00:00
+132	19	2017-09-11 00:00:00	2017-09-11 00:00:00
+133	19	2017-09-12 00:00:00	2017-09-12 00:00:00
+134	6	2017-09-13 00:00:00	2017-09-13 00:00:00
+135	8	2017-09-14 00:00:00	2017-09-14 00:00:00
+136	13	2017-09-15 00:00:00	2017-09-15 00:00:00
+137	13	2017-09-16 00:00:00	2017-09-16 00:00:00
+138	18	2017-09-17 00:00:00	2017-09-17 00:00:00
+139	22	2017-09-18 00:00:00	2017-09-18 00:00:00
+140	14	2017-09-19 00:00:00	2017-09-19 00:00:00
+141	9	2017-09-20 00:00:00	2017-09-20 00:00:00
+142	23	2017-09-21 00:00:00	2017-09-21 00:00:00
+143	24	2017-09-22 00:00:00	2017-09-22 00:00:00
+144	24	2017-09-23 00:00:00	2017-09-23 00:00:00
+145	23	2017-09-24 00:00:00	2017-09-24 00:00:00
+146	15	2017-09-25 00:00:00	2017-09-25 00:00:00
+147	6	2017-09-26 00:00:00	2017-09-26 00:00:00
+148	25	2017-09-27 00:00:00	2017-09-27 00:00:00
+149	17	2017-09-28 00:00:00	2017-09-28 00:00:00
+150	13	2017-09-29 00:00:00	2017-09-29 00:00:00
+151	15	2017-09-30 00:00:00	2017-09-30 00:00:00
+152	9	2017-10-01 00:00:00	2017-10-01 00:00:00
+153	7	2017-10-02 00:00:00	2017-10-02 00:00:00
+154	9	2017-10-03 00:00:00	2017-10-03 00:00:00
+155	23	2017-10-04 00:00:00	2017-10-04 00:00:00
+156	25	2017-10-05 00:00:00	2017-10-05 00:00:00
+157	25	2017-10-06 00:00:00	2017-10-06 00:00:00
+158	16	2017-10-07 00:00:00	2017-10-07 00:00:00
+159	13	2017-10-08 00:00:00	2017-10-08 00:00:00
+160	6	2017-10-09 00:00:00	2017-10-09 00:00:00
+161	21	2017-10-10 00:00:00	2017-10-10 00:00:00
+162	12	2017-10-11 00:00:00	2017-10-11 00:00:00
+163	18	2017-10-12 00:00:00	2017-10-12 00:00:00
+164	16	2017-10-13 00:00:00	2017-10-13 00:00:00
+165	9	2017-10-14 00:00:00	2017-10-14 00:00:00
+166	12	2017-10-15 00:00:00	2017-10-15 00:00:00
+167	12	2017-10-16 00:00:00	2017-10-16 00:00:00
+168	15	2017-10-17 00:00:00	2017-10-17 00:00:00
+169	15	2017-10-18 00:00:00	2017-10-18 00:00:00
+170	8	2017-10-19 00:00:00	2017-10-19 00:00:00
+171	18	2017-10-20 00:00:00	2017-10-20 00:00:00
+172	16	2017-10-21 00:00:00	2017-10-21 00:00:00
+173	23	2017-10-22 00:00:00	2017-10-22 00:00:00
+174	14	2017-10-23 00:00:00	2017-10-23 00:00:00
+175	20	2017-10-24 00:00:00	2017-10-24 00:00:00
+176	24	2017-10-25 00:00:00	2017-10-25 00:00:00
+177	20	2017-10-26 00:00:00	2017-10-26 00:00:00
+178	8	2017-10-27 00:00:00	2017-10-27 00:00:00
+179	21	2017-10-28 00:00:00	2017-10-28 00:00:00
+180	23	2017-10-29 00:00:00	2017-10-29 00:00:00
+181	15	2017-10-30 00:00:00	2017-10-30 00:00:00
+182	9	2017-10-31 00:00:00	2017-10-31 00:00:00
+183	6	2017-11-01 00:00:00	2017-11-01 00:00:00
+184	11	2017-11-02 00:00:00	2017-11-02 00:00:00
+185	17	2017-11-03 00:00:00	2017-11-03 00:00:00
+186	25	2017-11-04 00:00:00	2017-11-04 00:00:00
+187	7	2017-11-05 00:00:00	2017-11-05 00:00:00
+188	9	2017-11-06 00:00:00	2017-11-06 00:00:00
+189	18	2017-11-07 00:00:00	2017-11-07 00:00:00
+190	17	2017-11-08 00:00:00	2017-11-08 00:00:00
+191	14	2017-11-09 00:00:00	2017-11-09 00:00:00
+192	12	2017-11-10 00:00:00	2017-11-10 00:00:00
+193	24	2017-11-11 00:00:00	2017-11-11 00:00:00
+194	24	2017-11-12 00:00:00	2017-11-12 00:00:00
+195	15	2017-11-13 00:00:00	2017-11-13 00:00:00
+196	7	2017-11-14 00:00:00	2017-11-14 00:00:00
+197	7	2017-11-15 00:00:00	2017-11-15 00:00:00
+198	6	2017-11-16 00:00:00	2017-11-16 00:00:00
+199	14	2017-11-17 00:00:00	2017-11-17 00:00:00
+200	18	2017-11-18 00:00:00	2017-11-18 00:00:00
+201	18	2017-11-19 00:00:00	2017-11-19 00:00:00
+202	22	2017-11-20 00:00:00	2017-11-20 00:00:00
+203	25	2017-11-21 00:00:00	2017-11-21 00:00:00
+204	17	2017-11-22 00:00:00	2017-11-22 00:00:00
+205	11	2017-11-23 00:00:00	2017-11-23 00:00:00
+206	12	2017-11-24 00:00:00	2017-11-24 00:00:00
+207	9	2017-11-25 00:00:00	2017-11-25 00:00:00
+208	13	2017-11-26 00:00:00	2017-11-26 00:00:00
+209	24	2017-11-27 00:00:00	2017-11-27 00:00:00
+210	11	2017-11-28 00:00:00	2017-11-28 00:00:00
+211	12	2017-11-29 00:00:00	2017-11-29 00:00:00
+212	21	2017-11-30 00:00:00	2017-11-30 00:00:00
+213	6	2017-12-01 00:00:00	2017-12-01 00:00:00
+214	19	2017-12-02 00:00:00	2017-12-02 00:00:00
+215	19	2017-12-03 00:00:00	2017-12-03 00:00:00
+216	22	2017-12-04 00:00:00	2017-12-04 00:00:00
+217	20	2017-12-05 00:00:00	2017-12-05 00:00:00
+218	14	2017-12-06 00:00:00	2017-12-06 00:00:00
+219	15	2017-12-07 00:00:00	2017-12-07 00:00:00
+220	7	2017-12-08 00:00:00	2017-12-08 00:00:00
+221	25	2017-12-09 00:00:00	2017-12-09 00:00:00
 \.
 
 
@@ -1057,11 +1299,26 @@ COPY public.did_work (ticket_id, employee_id, start_time, end_time) FROM stdin;
 --
 
 COPY public.employee (employee_id, fname, lname, phone, active) FROM stdin;
-1	Chris	Park	6613329384	t
-2	Samus	Aran	6613928395	t
-3	Master	Chief	6618395838	t
-4	Chris	Redfield	6616839828	t
-5	Claire	Redfield	6613758393	t
+6	Ruth	Atkins	2566300884	t
+7	Kenneth	Burns	247460928	t
+8	Peter	Hartman	8889492190	t
+9	Octavius	Sargent	5120999842	t
+10	Duncan	Hester	427018964	t
+11	Uriel	Beard	8962611631	t
+12	Scarlett	Gilmore	1088010326	t
+13	Justin	Thomas	8227126865	t
+14	Ryder	Ray	9800551948	t
+15	Merritt	Vaughan	294771550	t
+16	Martha	Cochran	8489824599	t
+17	Aline	Hoffman	2586241476	t
+18	Kirsten	Lester	2196175429	t
+19	Illiana	Smith	2485651232	t
+20	Gay	Roth	7588121775	t
+21	Paul	Cervantes	5537485861	t
+22	Kiayada	Petersen	1079649460	t
+23	Solomon	England	6630885283	t
+24	Basia	Park	8936314061	t
+25	Sylvia	Vaughan	3800853448	t
 \.
 
 
@@ -1069,7 +1326,7 @@ COPY public.employee (employee_id, fname, lname, phone, active) FROM stdin;
 -- Name: employee_employee_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.employee_employee_id_seq', 5, true);
+SELECT pg_catalog.setval('public.employee_employee_id_seq', 25, true);
 
 
 --
@@ -1092,10 +1349,107 @@ COPY public.id (last_value) FROM stdin;
 --
 
 COPY public.invoice (invoice_number, ticket_id, invoice_total, pay_method_id, invoice_desc) FROM stdin;
-10001	10	100.99	5	etstdklafjlsdk
-80003	66	127.51	3	Repaired Mainline
-93483	78	100.22	5	Install moen faucet
-19	84	101.10	5	repaired faucet leaking
+70001	122	358.97	1	Proin nisl sem, consequat nec, mollis vitae, posuere at, velit. Cras lorem lorem, luctus ut, pellentesque eget, dictum
+70002	123	624.57	4	ornare lectus justo eu arcu. Morbi sit amet massa. Quisque porttitor eros nec
+70003	124	174.56	5	sapien. Aenean massa. Integer vitae nibh. Donec est mauris, rhoncus id, mollis nec, cursus a, enim.
+70004	125	459.26	4	malesuada id, erat. Etiam vestibulum massa rutrum magna. Cras convallis convallis dolor. Quisque tincidunt
+70005	126	554.29	1	amet risus. Donec egestas. Aliquam nec enim. Nunc ut erat. Sed nunc est, mollis non, cursus
+70006	127	755.17	5	sem magna nec quam. Curabitur vel lectus. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus
+70007	128	368.16	5	at pede. Cras vulputate velit eu sem. Pellentesque ut ipsum ac mi eleifend egestas. Sed pharetra, felis eget
+70008	129	641.44	3	in consectetuer ipsum nunc id enim. Curabitur massa. Vestibulum accumsan
+70009	130	795.20	1	sit amet diam eu dolor egestas rhoncus. Proin nisl sem, consequat
+70010	131	396.38	1	senectus et netus et malesuada fames ac turpis egestas. Fusce aliquet magna a
+70011	132	581.59	2	Etiam bibendum fermentum metus. Aenean sed pede nec ante blandit viverra. Donec tempus, lorem fringilla ornare placerat,
+70012	133	226.51	5	magnis dis parturient montes, nascetur ridiculus mus. Proin vel arcu eu odio tristique
+70013	134	292.55	1	per inceptos hymenaeos. Mauris ut quam vel sapien imperdiet ornare. In
+70014	135	212.12	2	bibendum ullamcorper. Duis cursus, diam at pretium aliquet, metus urna
+70015	136	163.18	5	sollicitudin adipiscing ligula. Aenean gravida nunc sed pede. Cum sociis natoque penatibus et magnis dis
+70016	137	350.52	4	mauris sapien, cursus in, hendrerit consectetuer, cursus et, magna. Praesent interdum ligula eu enim. Etiam imperdiet dictum magna. Ut tincidunt
+70017	138	201.67	3	mollis dui, in sodales elit erat vitae risus. Duis a mi fringilla mi
+70018	139	370.97	3	metus. In lorem. Donec elementum, lorem ut aliquam iaculis, lacus pede sagittis augue, eu tempor erat
+70019	140	608.05	2	condimentum eget, volutpat ornare, facilisis eget, ipsum. Donec sollicitudin adipiscing ligula.
+70020	141	752.48	3	dignissim lacus. Aliquam rutrum lorem ac risus. Morbi metus. Vivamus euismod urna. Nullam lobortis
+70021	142	517.23	3	vitae velit egestas lacinia. Sed congue, elit sed consequat auctor, nunc nulla vulputate dui, nec tempus mauris erat eget ipsum.
+70022	143	185.16	5	vestibulum massa rutrum magna. Cras convallis convallis dolor. Quisque tincidunt pede
+70023	144	699.47	2	diam dictum sapien. Aenean massa. Integer vitae nibh. Donec est mauris, rhoncus id, mollis nec, cursus
+70024	145	589.87	1	dolor, nonummy ac, feugiat non, lobortis quis, pede. Suspendisse dui. Fusce diam nunc, ullamcorper eu, euismod ac,
+70025	146	95.73	2	Maecenas iaculis aliquet diam. Sed diam lorem, auctor quis, tristique ac, eleifend vitae, erat. Vivamus nisi.
+70026	147	419.09	2	dapibus rutrum, justo. Praesent luctus. Curabitur egestas nunc sed libero. Proin sed turpis
+70027	148	347.89	2	Nulla aliquet. Proin velit. Sed malesuada augue ut lacus. Nulla tincidunt, neque vitae semper egestas, urna justo faucibus lectus,
+70028	149	131.46	5	mi lorem, vehicula et, rutrum eu, ultrices sit amet, risus. Donec nibh enim, gravida
+70029	150	380.79	4	natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Proin vel nisl. Quisque fringilla
+70030	151	322.11	2	dolor, tempus non, lacinia at, iaculis quis, pede. Praesent eu dui. Cum sociis natoque penatibus
+70031	152	352.31	5	ultrices posuere cubilia Curae; Phasellus ornare. Fusce mollis. Duis sit amet diam eu dolor egestas
+70032	153	416.81	4	Aliquam gravida mauris ut mi. Duis risus odio, auctor vitae, aliquet nec, imperdiet nec, leo.
+70033	154	94.39	4	pellentesque. Sed dictum. Proin eget odio. Aliquam vulputate ullamcorper magna. Sed eu
+70034	155	492.19	1	eu augue porttitor interdum. Sed auctor odio a purus. Duis elementum,
+70035	156	495.25	2	arcu imperdiet ullamcorper. Duis at lacus. Quisque purus sapien, gravida non, sollicitudin
+70036	157	260.98	1	imperdiet non, vestibulum nec, euismod in, dolor. Fusce feugiat. Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
+70037	158	522.16	3	quam dignissim pharetra. Nam ac nulla. In tincidunt congue turpis. In condimentum. Donec at arcu. Vestibulum ante ipsum primis
+70038	159	293.59	1	a, arcu. Sed et libero. Proin mi. Aliquam gravida mauris ut mi. Duis
+70039	160	680.97	1	penatibus et magnis dis parturient montes, nascetur ridiculus mus. Proin vel arcu eu
+70040	161	385.39	3	lacinia orci, consectetuer euismod est arcu ac orci. Ut semper pretium neque. Morbi quis urna. Nunc quis arcu vel quam
+70041	162	157.53	1	erat, eget tincidunt dui augue eu tellus. Phasellus elit pede, malesuada
+70042	163	204.98	1	Cras dictum ultricies ligula. Nullam enim. Sed nulla ante, iaculis nec, eleifend non, dapibus rutrum, justo. Praesent luctus. Curabitur
+70043	164	229.89	3	dui. Cras pellentesque. Sed dictum. Proin eget odio. Aliquam vulputate ullamcorper
+70044	165	660.04	4	scelerisque neque sed sem egestas blandit. Nam nulla magna, malesuada vel, convallis
+70045	166	632.66	3	quis arcu vel quam dignissim pharetra. Nam ac nulla. In tincidunt congue turpis. In
+70046	167	106.30	1	in, dolor. Fusce feugiat. Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aliquam
+70047	168	436.87	3	Suspendisse eleifend. Cras sed leo. Cras vehicula aliquet libero. Integer in magna. Phasellus dolor
+70048	169	249.86	1	euismod et, commodo at, libero. Morbi accumsan laoreet ipsum. Curabitur
+70049	170	710.05	5	sed dolor. Fusce mi lorem, vehicula et, rutrum eu, ultrices sit amet,
+70050	171	535.25	2	cursus. Integer mollis. Integer tincidunt aliquam arcu. Aliquam ultrices iaculis odio. Nam interdum enim non nisi. Aenean eget metus. In
+70051	172	782.79	1	vulputate, nisi sem semper erat, in consectetuer ipsum nunc id enim. Curabitur
+70052	173	782.26	3	non, feugiat nec, diam. Duis mi enim, condimentum eget, volutpat ornare, facilisis eget, ipsum.
+70053	174	595.43	1	sed pede nec ante blandit viverra. Donec tempus, lorem fringilla ornare placerat, orci lacus vestibulum lorem, sit amet ultricies
+70054	175	612.46	1	ante. Vivamus non lorem vitae odio sagittis semper. Nam tempor diam
+70055	176	521.48	4	vehicula. Pellentesque tincidunt tempus risus. Donec egestas. Duis ac arcu. Nunc mauris. Morbi
+70056	177	624.69	3	dapibus ligula. Aliquam erat volutpat. Nulla dignissim. Maecenas ornare egestas ligula. Nullam feugiat placerat velit. Quisque varius. Nam
+70057	178	527.56	4	a, arcu. Sed et libero. Proin mi. Aliquam gravida mauris ut mi. Duis risus odio, auctor vitae, aliquet nec,
+70058	179	237.55	5	magna. Duis dignissim tempor arcu. Vestibulum ut eros non enim commodo hendrerit. Donec porttitor tellus non magna. Nam ligula elit,
+70059	180	345.50	1	risus, at fringilla purus mauris a nunc. In at pede. Cras
+70060	181	309.76	4	Morbi neque tellus, imperdiet non, vestibulum nec, euismod in, dolor. Fusce
+70061	182	513.92	1	a, malesuada id, erat. Etiam vestibulum massa rutrum magna. Cras convallis convallis dolor. Quisque tincidunt pede ac urna. Ut
+70062	183	375.61	3	arcu. Aliquam ultrices iaculis odio. Nam interdum enim non nisi. Aenean eget metus. In
+70063	184	450.59	2	id enim. Curabitur massa. Vestibulum accumsan neque et nunc. Quisque ornare tortor at risus. Nunc ac sem ut dolor dapibus
+70064	185	777.94	2	massa rutrum magna. Cras convallis convallis dolor. Quisque tincidunt pede ac urna. Ut tincidunt vehicula
+70065	186	736.61	2	enim commodo hendrerit. Donec porttitor tellus non magna. Nam ligula elit,
+70066	187	587.43	1	mollis nec, cursus a, enim. Suspendisse aliquet, sem ut cursus luctus, ipsum leo elementum sem, vitae aliquam eros turpis non
+70067	188	262.61	3	vestibulum, neque sed dictum eleifend, nunc risus varius orci, in
+70068	189	456.90	2	vulputate mauris sagittis placerat. Cras dictum ultricies ligula. Nullam enim. Sed nulla ante, iaculis nec, eleifend non,
+70069	190	648.43	5	nunc est, mollis non, cursus non, egestas a, dui. Cras pellentesque. Sed dictum. Proin eget odio.
+70070	191	429.05	5	vel, vulputate eu, odio. Phasellus at augue id ante dictum
+70071	192	224.30	5	orci luctus et ultrices posuere cubilia Curae; Phasellus ornare. Fusce mollis. Duis sit amet diam eu dolor egestas rhoncus. Proin
+70072	193	381.26	2	non enim. Mauris quis turpis vitae purus gravida sagittis. Duis gravida. Praesent eu nulla at sem molestie sodales.
+70073	194	719.11	2	eu metus. In lorem. Donec elementum, lorem ut aliquam iaculis, lacus pede sagittis augue, eu tempor erat neque non
+70074	195	729.41	1	taciti sociosqu ad litora torquent per conubia nostra, per inceptos hymenaeos. Mauris ut quam
+70075	196	149.98	4	est, mollis non, cursus non, egestas a, dui. Cras pellentesque. Sed dictum. Proin eget
+70076	197	325.63	2	orci, consectetuer euismod est arcu ac orci. Ut semper pretium neque. Morbi quis
+70077	198	498.64	3	nostra, per inceptos hymenaeos. Mauris ut quam vel sapien imperdiet ornare. In faucibus. Morbi vehicula. Pellentesque tincidunt tempus risus.
+70078	199	591.89	2	iaculis, lacus pede sagittis augue, eu tempor erat neque non quam. Pellentesque habitant morbi tristique senectus
+70079	200	490.65	1	dictum eu, eleifend nec, malesuada ut, sem. Nulla interdum. Curabitur dictum. Phasellus in
+70080	201	487.57	2	lacus vestibulum lorem, sit amet ultricies sem magna nec quam. Curabitur vel
+70081	202	426.04	1	nascetur ridiculus mus. Aenean eget magna. Suspendisse tristique neque venenatis lacus. Etiam bibendum
+70082	203	474.81	4	elit, pretium et, rutrum non, hendrerit id, ante. Nunc mauris sapien, cursus in, hendrerit consectetuer, cursus et,
+70083	204	574.18	5	ut lacus. Nulla tincidunt, neque vitae semper egestas, urna justo faucibus lectus, a sollicitudin orci sem eget
+70084	205	107.58	4	in molestie tortor nibh sit amet orci. Ut sagittis lobortis mauris. Suspendisse aliquet molestie tellus. Aenean egestas hendrerit neque.
+70085	206	667.19	5	amet, consectetuer adipiscing elit. Curabitur sed tortor. Integer aliquam adipiscing lacus. Ut nec urna et arcu imperdiet ullamcorper. Duis
+70086	207	173.98	3	netus et malesuada fames ac turpis egestas. Aliquam fringilla cursus purus. Nullam scelerisque neque sed
+70087	208	93.29	5	eu enim. Etiam imperdiet dictum magna. Ut tincidunt orci quis lectus. Nullam suscipit, est
+70088	209	204.95	1	ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Phasellus ornare. Fusce mollis. Duis
+70089	210	263.06	1	ipsum nunc id enim. Curabitur massa. Vestibulum accumsan neque et nunc.
+70090	211	96.12	4	at arcu. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae;
+70091	212	177.56	1	non, lacinia at, iaculis quis, pede. Praesent eu dui. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur
+70092	213	661.10	2	eleifend, nunc risus varius orci, in consequat enim diam vel arcu. Curabitur ut odio vel est tempor
+70093	214	629.00	5	a purus. Duis elementum, dui quis accumsan convallis, ante lectus convallis est, vitae sodales nisi magna sed dui. Fusce aliquam,
+70094	215	412.54	5	lectus pede et risus. Quisque libero lacus, varius et, euismod et, commodo at, libero. Morbi accumsan laoreet
+70095	216	660.91	4	cursus, diam at pretium aliquet, metus urna convallis erat, eget tincidunt dui augue eu tellus. Phasellus elit pede,
+70096	217	546.08	4	Integer vitae nibh. Donec est mauris, rhoncus id, mollis nec, cursus a, enim. Suspendisse aliquet, sem ut cursus luctus,
+70097	218	237.47	3	a ultricies adipiscing, enim mi tempor lorem, eget mollis lectus pede et risus. Quisque libero lacus,
+70098	219	416.04	5	tempor lorem, eget mollis lectus pede et risus. Quisque libero
+70099	220	492.92	4	blandit viverra. Donec tempus, lorem fringilla ornare placerat, orci lacus vestibulum lorem, sit amet
+70100	221	277.87	4	malesuada augue ut lacus. Nulla tincidunt, neque vitae semper egestas, urna justo faucibus lectus,
+80001	222	199.75	2	Repaired bathroom sink leak. Replaced hot and cold cartridges.
 \.
 
 
@@ -1111,14 +1465,206 @@ SELECT pg_catalog.setval('public.item_id_seq', 1, false);
 --
 
 COPY public.location (location_id, customer_id, address, zipcode) FROM stdin;
-1	1	12312 Jensen Dr.	93309
-2	1	512 Washington st	93309
-4	6	5448 Main St	93313
-5	5	1337 Center Ave	93308
-6	6	245 Raven Dr	93311
-7	4	9115 Market St	93312
-8	2	128 Charles Ct	93309
-9	3	4444 Water Canyon blvd	93306
+10	17	P.O. Box 695, 7241 Augue Rd.	93309
+11	18	134-3890 Fusce Avenue	93307
+12	19	2230 Nec, Av.	93309
+13	20	531-2577 Facilisi. Avenue	93308
+14	21	720-4581 Augue. Ave	93309
+15	22	Ap #753-9369 Enim Ave	93307
+16	23	P.O. Box 106, 9494 At, Rd.	93308
+17	24	Ap #359-4796 Pede. St.	93309
+18	25	3274 Nisl Ave	93307
+19	26	Ap #397-5926 Ipsum. Av.	93309
+20	27	696-4572 Mus. St.	93307
+21	28	904-6919 Nisi. St.	93309
+22	29	333-1158 Bibendum Rd.	93309
+23	30	P.O. Box 817, 8289 Vitae, Rd.	93308
+24	31	P.O. Box 820, 2407 Vulputate Road	93308
+25	32	Ap #928-2401 Nec, Street	93309
+26	33	3054 Lorem. Avenue	93307
+27	34	594-7347 Non Av.	93307
+28	35	410-4290 Ac Street	93307
+29	36	P.O. Box 112, 7102 Viverra. Rd.	93308
+30	37	Ap #417-8044 Elementum Street	93308
+31	38	187-6186 Vulputate Ave	93307
+32	39	1882 Cursus Av.	93309
+33	40	324-5224 Aenean Avenue	93309
+34	41	708-8087 Non Street	93308
+35	42	566-2090 Molestie Street	93309
+36	43	3634 Nunc Avenue	93309
+37	44	Ap #755-6684 Nec, Avenue	93307
+38	45	P.O. Box 682, 3921 Quisque St.	93309
+39	46	P.O. Box 991, 9776 Ante. Road	93309
+40	47	813-5653 Bibendum St.	93309
+41	48	2259 In St.	93309
+42	49	640-1873 Blandit Ave	93309
+43	50	Ap #663-4244 Tortor, Av.	93307
+44	51	696-9058 Ac Ave	93309
+45	52	199 Quis Street	93308
+46	53	5926 Metus Av.	93308
+47	54	P.O. Box 578, 2688 Quis Av.	93308
+48	55	8535 Nunc Rd.	93307
+49	56	2004 Cras Av.	93308
+50	57	235-8462 Laoreet, St.	93307
+51	58	704-9120 Sem Av.	93309
+52	59	Ap #255-9084 Nulla. Rd.	93309
+53	60	Ap #582-3182 Est St.	93309
+54	61	P.O. Box 934, 3739 Convallis Street	93308
+55	62	Ap #722-7075 Quisque Ave	93309
+56	63	301-6565 Sit Avenue	93309
+57	64	824 In, Ave	93307
+58	65	653-6395 Nunc Avenue	93308
+59	66	Ap #612-9359 Nibh St.	93307
+60	67	869-8533 Orci. Avenue	93308
+61	68	P.O. Box 160, 1154 Dictum Rd.	93308
+62	69	607 Vitae St.	93309
+63	70	P.O. Box 786, 9579 Urna Street	93308
+64	71	P.O. Box 531, 2814 Vivamus Rd.	93309
+65	72	Ap #424-8964 Velit. St.	93307
+66	73	2840 Eget Avenue	93309
+67	74	498-414 Odio Street	93308
+68	75	P.O. Box 684, 8479 Volutpat. Street	93309
+69	76	Ap #325-8707 Risus. Rd.	93309
+70	77	312-3343 Pharetra Street	93309
+71	78	834-1382 Eu, Road	93308
+72	79	Ap #910-2763 Id, Street	93308
+73	80	P.O. Box 466, 778 Dis Av.	93307
+74	81	5296 Maecenas Rd.	93307
+75	82	2973 A, Street	93308
+76	83	Ap #982-9620 Euismod Street	93309
+77	84	P.O. Box 484, 2406 Egestas Avenue	93309
+78	85	200-8107 Lobortis Ave	93308
+79	86	P.O. Box 417, 5004 Sollicitudin St.	93307
+80	87	303 Sagittis Rd.	93307
+81	88	P.O. Box 364, 3148 At, St.	93307
+82	89	P.O. Box 434, 8164 Mus. Av.	93308
+83	90	221-8182 In Av.	93308
+84	91	5176 Blandit St.	93309
+85	92	P.O. Box 279, 6612 Auctor Street	93307
+86	93	916-3204 Torquent Avenue	93307
+87	94	P.O. Box 755, 4645 Sem Road	93308
+88	95	6670 Et, Street	93307
+89	96	346-5787 Ornare, St.	93308
+90	97	Ap #298-2646 Eu Street	93309
+91	98	930-8420 Ante Avenue	93307
+92	99	2771 Aliquam Avenue	93308
+93	100	623-647 Aliquet Avenue	93309
+94	101	256-2786 Interdum Road	93309
+95	102	643-3450 Velit Ave	93308
+96	103	1624 In Av.	93307
+97	104	4747 Nullam Road	93308
+98	105	7543 Mi Rd.	93309
+99	106	8703 Sit Av.	93307
+100	107	720-3831 Cras Rd.	93308
+101	108	1800 Mauris Rd.	93309
+102	109	5750 Quisque St.	93307
+103	110	Ap #667-3360 Et St.	93307
+104	111	Ap #304-9353 At, Avenue	93309
+105	112	P.O. Box 653, 8332 Lacus, Avenue	93307
+106	113	1429 Consectetuer Avenue	93308
+107	114	365-814 Scelerisque Road	93308
+108	115	Ap #639-6206 Et St.	93309
+109	116	1906 Mauris Avenue	93307
+110	17	119-1837 Proin Rd.	93314
+111	18	2887 Sem Av.	93314
+112	19	Ap #529-770 Magna Road	93311
+113	20	Ap #106-9358 Aliquam Road	93311
+114	21	P.O. Box 735, 1282 Eu St.	93312
+115	22	3489 Velit Rd.	93312
+116	23	P.O. Box 913, 1809 Dictum St.	93313
+117	24	421-4454 Vel Road	93313
+118	25	862-6839 Arcu. Road	93314
+119	26	2037 Aenean Road	93314
+120	27	P.O. Box 874, 8767 Amet, Av.	93313
+121	28	Ap #503-1802 Vivamus Av.	93311
+122	29	Ap #543-178 Rhoncus. Av.	93312
+123	30	Ap #722-3949 Et Street	93311
+124	31	Ap #677-2721 Dui. Rd.	93312
+125	32	Ap #557-8108 Dictum. Avenue	93312
+126	33	7329 Odio Av.	93314
+127	34	P.O. Box 224, 1370 Imperdiet, Rd.	93314
+128	35	4602 Velit Street	93313
+129	36	107-6087 Cras Road	93313
+130	37	P.O. Box 343, 9242 Donec Avenue	93314
+131	38	P.O. Box 303, 6965 Sollicitudin Rd.	93313
+132	39	Ap #822-1185 Purus, Avenue	93311
+133	40	Ap #854-3790 Placerat, Avenue	93312
+134	41	P.O. Box 100, 235 Duis Rd.	93312
+135	42	P.O. Box 716, 4662 Augue, Rd.	93312
+136	43	7569 Dignissim. Rd.	93313
+137	44	602-3340 Posuere, St.	93313
+138	45	3143 Sem. Av.	93313
+139	46	6038 Molestie. Street	93314
+140	47	6002 Est. Avenue	93312
+141	48	P.O. Box 208, 5426 Nulla Road	93312
+142	49	Ap #588-7622 Donec Rd.	93312
+143	50	9033 Quisque Avenue	93313
+144	51	3628 Donec Rd.	93313
+145	52	563-207 Ut St.	93314
+146	53	1359 Risus. Avenue	93311
+147	54	Ap #167-9796 Aliquet, St.	93314
+148	55	P.O. Box 102, 1566 Sit Street	93312
+149	56	936-2414 Sed Street	93311
+150	57	445-6802 Sed Avenue	93311
+151	58	P.O. Box 937, 4472 Ac, Ave	93312
+152	59	P.O. Box 251, 4380 Phasellus Av.	93314
+153	60	1826 Phasellus Rd.	93312
+154	61	P.O. Box 479, 5717 Diam Avenue	93312
+155	62	Ap #528-6367 Ante Ave	93314
+156	63	Ap #916-459 Quisque Street	93314
+157	64	781-8449 Consectetuer St.	93311
+158	65	Ap #216-8074 Integer Av.	93312
+159	66	2610 Suspendisse Street	93312
+160	67	Ap #309-5473 Ultrices Ave	93313
+161	68	P.O. Box 783, 4069 Sed, St.	93314
+162	69	P.O. Box 714, 9591 Magna. Avenue	93311
+163	70	188-4749 Vitae, Rd.	93311
+164	71	420-7390 At, Av.	93312
+165	72	P.O. Box 741, 5235 Egestas. Ave	93311
+166	73	Ap #695-1803 Hendrerit. Street	93312
+167	74	502-1492 Elit, Road	93312
+168	75	820-9434 A, Rd.	93314
+169	76	P.O. Box 503, 1549 Ac Rd.	93313
+170	77	173-3190 Et, Av.	93311
+171	78	Ap #404-3978 Consectetuer Avenue	93312
+172	79	7545 Orci, Road	93311
+173	80	Ap #440-4571 Eget Road	93311
+174	81	635-1258 Vitae Avenue	93313
+175	82	4977 Dolor, Av.	93312
+176	83	Ap #721-3940 Erat Rd.	93313
+177	84	139-350 Ut St.	93314
+178	85	P.O. Box 820, 722 Dictum St.	93313
+179	86	P.O. Box 359, 3651 Lorem Road	93313
+180	87	6452 Nulla Street	93314
+181	88	Ap #459-2431 Sit Road	93311
+182	89	7579 Gravida Avenue	93312
+183	90	3329 Natoque Rd.	93311
+184	91	139-719 Risus Rd.	93312
+185	92	P.O. Box 727, 7523 Id Rd.	93314
+186	93	Ap #817-2607 Augue Rd.	93314
+187	94	Ap #143-3726 Faucibus Road	93311
+188	95	Ap #567-461 Arcu. Rd.	93314
+189	96	P.O. Box 382, 6938 Diam St.	93311
+190	97	Ap #664-7941 Purus. Rd.	93312
+191	98	P.O. Box 611, 604 Ligula Road	93314
+192	99	781-1542 Amet, St.	93312
+193	100	P.O. Box 524, 3265 Placerat, Avenue	93314
+194	101	Ap #515-8836 Interdum. Rd.	93313
+195	102	398-1880 Vulputate St.	93311
+196	103	6373 At Street	93313
+197	104	Ap #236-7835 Interdum. Rd.	93312
+198	105	7133 Eget Av.	93313
+199	106	9913 Suspendisse Avenue	93314
+200	107	659-8611 Scelerisque Rd.	93312
+201	108	5425 Augue Street	93313
+202	109	2253 Quam, Avenue	93314
+203	110	5550 Venenatis Av.	93312
+204	111	842-468 Metus Street	93313
+205	112	P.O. Box 338, 6927 Vestibulum Road	93313
+206	113	P.O. Box 276, 1342 Mi St.	93314
+207	114	Ap #665-684 Ullamcorper. Street	93312
+208	115	P.O. Box 844, 7464 Cras Road	93311
+209	116	P.O. Box 463, 3895 Est, Ave	93313
 \.
 
 
@@ -1133,7 +1679,7 @@ SELECT pg_catalog.setval('public.location_id_seq', 1, false);
 -- Name: location_location_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.location_location_id_seq', 9, true);
+SELECT pg_catalog.setval('public.location_location_id_seq', 209, true);
 
 
 --
@@ -1191,13 +1737,16 @@ SELECT pg_catalog.setval('public.payment_method_pay_method_id_seq', 5, true);
 --
 
 COPY public.problem (problem_id, work_type) FROM stdin;
-1	Mainline
-2	Water Leak
-3	Water Heater
-4	Bath Tub
-5	Faucet
-6	Shower
-7	Gas Line
+8	Mainline
+9	Toilet
+10	Kitchen Sink
+11	Bathroom Sink
+12	Shower
+13	Bathtub
+14	Gas Line
+15	Water Line
+16	Septic System
+17	Water Heater
 \.
 
 
@@ -1212,7 +1761,7 @@ SELECT pg_catalog.setval('public.problem_id_seq', 1, false);
 -- Name: problem_problem_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.problem_problem_id_seq', 7, true);
+SELECT pg_catalog.setval('public.problem_problem_id_seq', 17, true);
 
 
 --
@@ -1220,10 +1769,107 @@ SELECT pg_catalog.setval('public.problem_problem_id_seq', 7, true);
 --
 
 COPY public.ticket (ticket_id, location_id, problem_id, eta, status, received) FROM stdin;
-66	7	1	2018-10-11 05:05:12	Closed	2018-05-12 17:22:20.583773
-78	2	5	\N	Closed	2018-05-13 13:48:38.483839
-84	5	5	\N	Closed	2018-05-14 22:26:27.587187
-10	6	5	\N	Closed	2018-05-06 15:19:08.798049
+122	91	14	\N	Closed	2018-05-16 14:31:56.480036
+123	86	17	\N	Closed	2018-05-16 14:31:56.480036
+124	13	9	\N	Closed	2018-05-16 14:31:56.480036
+125	71	17	\N	Closed	2018-05-16 14:31:56.480036
+126	82	14	\N	Closed	2018-05-16 14:31:56.480036
+127	32	17	\N	Closed	2018-05-16 14:31:56.480036
+128	87	10	\N	Closed	2018-05-16 14:31:56.480036
+129	87	15	\N	Closed	2018-05-16 14:31:56.480036
+130	85	8	\N	Closed	2018-05-16 14:31:56.480036
+131	16	10	\N	Closed	2018-05-16 14:31:56.480036
+132	25	14	\N	Closed	2018-05-16 14:31:56.480036
+133	68	9	\N	Closed	2018-05-16 14:31:56.480036
+134	106	15	\N	Closed	2018-05-16 14:31:56.480036
+135	96	17	\N	Closed	2018-05-16 14:31:56.480036
+136	36	12	\N	Closed	2018-05-16 14:31:56.480036
+137	100	11	\N	Closed	2018-05-16 14:31:56.480036
+138	31	16	\N	Closed	2018-05-16 14:31:56.480036
+139	46	9	\N	Closed	2018-05-16 14:31:56.480036
+140	16	10	\N	Closed	2018-05-16 14:31:56.480036
+141	68	17	\N	Closed	2018-05-16 14:31:56.480036
+142	48	11	\N	Closed	2018-05-16 14:31:56.480036
+143	100	13	\N	Closed	2018-05-16 14:31:56.480036
+144	104	8	\N	Closed	2018-05-16 14:31:56.480036
+145	27	13	\N	Closed	2018-05-16 14:31:56.480036
+146	46	8	\N	Closed	2018-05-16 14:31:56.480036
+147	28	13	\N	Closed	2018-05-16 14:31:56.480036
+148	27	12	\N	Closed	2018-05-16 14:31:56.480036
+149	29	15	\N	Closed	2018-05-16 14:31:56.480036
+150	64	13	\N	Closed	2018-05-16 14:31:56.480036
+151	77	8	\N	Closed	2018-05-16 14:31:56.480036
+152	103	12	\N	Closed	2018-05-16 14:31:56.480036
+153	14	17	\N	Closed	2018-05-16 14:31:56.480036
+154	45	17	\N	Closed	2018-05-16 14:31:56.480036
+155	16	11	\N	Closed	2018-05-16 14:31:56.480036
+156	24	17	\N	Closed	2018-05-16 14:31:56.480036
+157	77	15	\N	Closed	2018-05-16 14:31:56.480036
+158	108	9	\N	Closed	2018-05-16 14:31:56.480036
+159	85	10	\N	Closed	2018-05-16 14:31:56.480036
+160	104	15	\N	Closed	2018-05-16 14:31:56.480036
+161	105	16	\N	Closed	2018-05-16 14:31:56.480036
+162	18	13	\N	Closed	2018-05-16 14:31:56.480036
+163	51	14	\N	Closed	2018-05-16 14:31:56.480036
+164	109	12	\N	Closed	2018-05-16 14:31:56.480036
+165	53	8	\N	Closed	2018-05-16 14:31:56.480036
+166	18	9	\N	Closed	2018-05-16 14:31:56.480036
+167	40	11	\N	Closed	2018-05-16 14:31:56.480036
+168	82	12	\N	Closed	2018-05-16 14:31:56.480036
+169	99	17	\N	Closed	2018-05-16 14:31:56.480036
+170	82	9	\N	Closed	2018-05-16 14:31:56.480036
+171	94	11	\N	Closed	2018-05-16 14:31:56.480036
+172	69	15	\N	Closed	2018-05-16 14:31:56.480036
+173	16	9	\N	Closed	2018-05-16 14:31:56.480036
+174	38	12	\N	Closed	2018-05-16 14:31:56.480036
+175	101	17	\N	Closed	2018-05-16 14:31:56.480036
+176	88	13	\N	Closed	2018-05-16 14:31:56.480036
+177	37	9	\N	Closed	2018-05-16 14:31:56.480036
+178	32	12	\N	Closed	2018-05-16 14:31:56.480036
+179	39	12	\N	Closed	2018-05-16 14:31:56.480036
+180	23	15	\N	Closed	2018-05-16 14:31:56.480036
+181	50	12	\N	Closed	2018-05-16 14:31:56.480036
+182	79	15	\N	Closed	2018-05-16 14:31:56.480036
+183	83	13	\N	Closed	2018-05-16 14:31:56.480036
+184	67	8	\N	Closed	2018-05-16 14:31:56.480036
+185	54	8	\N	Closed	2018-05-16 14:31:56.480036
+186	15	12	\N	Closed	2018-05-16 14:31:56.480036
+187	59	9	\N	Closed	2018-05-16 14:31:56.480036
+188	61	9	\N	Closed	2018-05-16 14:31:56.480036
+189	100	17	\N	Closed	2018-05-16 14:31:56.480036
+190	23	11	\N	Closed	2018-05-16 14:31:56.480036
+191	96	16	\N	Closed	2018-05-16 14:31:56.480036
+192	25	17	\N	Closed	2018-05-16 14:31:56.480036
+193	39	12	\N	Closed	2018-05-16 14:31:56.480036
+194	88	10	\N	Closed	2018-05-16 14:31:56.480036
+195	16	17	\N	Closed	2018-05-16 14:31:56.480036
+196	46	12	\N	Closed	2018-05-16 14:31:56.480036
+197	36	12	\N	Closed	2018-05-16 14:31:56.480036
+198	35	17	\N	Closed	2018-05-16 14:31:56.480036
+199	52	16	\N	Closed	2018-05-16 14:31:56.480036
+200	46	12	\N	Closed	2018-05-16 14:31:56.480036
+201	46	8	\N	Closed	2018-05-16 14:31:56.480036
+202	99	11	\N	Closed	2018-05-16 14:31:56.480036
+203	14	8	\N	Closed	2018-05-16 14:31:56.480036
+204	101	11	\N	Closed	2018-05-16 14:31:56.480036
+205	14	15	\N	Closed	2018-05-16 14:31:56.480036
+206	90	11	\N	Closed	2018-05-16 14:31:56.480036
+207	67	10	\N	Closed	2018-05-16 14:31:56.480036
+208	50	11	\N	Closed	2018-05-16 14:31:56.480036
+209	26	14	\N	Closed	2018-05-16 14:31:56.480036
+210	50	9	\N	Closed	2018-05-16 14:31:56.480036
+211	61	10	\N	Closed	2018-05-16 14:31:56.480036
+212	77	12	\N	Closed	2018-05-16 14:31:56.480036
+213	46	17	\N	Closed	2018-05-16 14:31:56.480036
+214	42	8	\N	Closed	2018-05-16 14:31:56.480036
+215	81	8	\N	Closed	2018-05-16 14:31:56.480036
+216	70	15	\N	Closed	2018-05-16 14:31:56.480036
+217	54	11	\N	Closed	2018-05-16 14:31:56.480036
+218	19	15	\N	Closed	2018-05-16 14:31:56.480036
+219	91	10	\N	Closed	2018-05-16 14:31:56.480036
+220	24	9	\N	Closed	2018-05-16 14:31:56.480036
+221	17	11	\N	Closed	2018-05-16 14:31:56.480036
+222	115	11	\N	Closed	2018-05-16 15:13:33.518838
 \.
 
 
@@ -1238,7 +1884,7 @@ SELECT pg_catalog.setval('public.ticket_id_seq', 1, true);
 -- Name: ticket_ticket_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.ticket_ticket_id_seq', 84, true);
+SELECT pg_catalog.setval('public.ticket_ticket_id_seq', 222, true);
 
 
 SET default_tablespace = '';
